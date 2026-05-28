@@ -63,7 +63,7 @@ ENV RGL_USE_NULL=TRUE
 # pak::pkg_sysreqs for ubuntu-24.04). R packages come from renv.lock (pinned P3M
 # snapshot), not apt; disable r2u's bspm hook so renv resolves from P3M.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates git \
+        ca-certificates curl git \
         libgfortran5 libquadmath0 libstdc++6 \
         libcairo2-dev libfreetype6-dev libpng-dev libxml2-dev libssl-dev \
         libgl1-mesa-dev libglu1-mesa-dev libicu-dev libuv1-dev zlib1g-dev \
@@ -72,10 +72,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && sed -i 's/^suppressMessages(bspm::enable())/# bspm disabled: R packages managed by renv/' /etc/R/Rprofile.site
 
-# Restore the pinned CRAN package set from renv.lock (P3M binaries).
-RUN R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-27")'
+# Restore the pinned CRAN package set from renv.lock (P3M binaries). Install renv
+# and restore in ONE layer: otherwise renv's self-update during restore tries to
+# rename the previously-installed renv, which lives on a lower Docker layer, and
+# overlayfs fails that same-dir rename with EXDEV ("invalid cross-device link").
 COPY renv.lock /tmp/renv.lock
-RUN R -q -e 'renv::restore(lockfile="/tmp/renv.lock", library="/usr/local/lib/R/site-library", prompt=FALSE)'
+RUN R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-27"); renv::restore(lockfile="/tmp/renv.lock", library="/usr/local/lib/R/site-library", prompt=FALSE)'
 
 # rFVS from the patched vendored interface source (ships without a NAMESPACE, so
 # patch -> roxygenize -> install). fvsOL is added only in the webgui target;

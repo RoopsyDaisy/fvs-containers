@@ -15,6 +15,15 @@ ROOT="$(cd "$HERE/.." && pwd)"
 SUB="${1:-$ROOT/vendor/fvs-interface}"
 PATCH_DIR="${2:-$ROOT/patches}"
 
+# A submodule checkout carries a ".git" *file* pointing at the superproject's
+# gitdir. When this tree is COPYed into a Docker build (or any context lacking
+# that gitdir) the pointer dangles and `git apply` aborts with "not a git
+# repository". git apply needs no repo to patch a plain tree, so drop a dangling
+# pointer. A valid .git (e.g. the live dev submodule) resolves and is untouched.
+if [ -f "$SUB/.git" ] && ! git -C "$SUB" rev-parse --git-dir >/dev/null 2>&1; then
+  rm -f "$SUB/.git"
+fi
+
 shopt -s nullglob
 patches=("$PATCH_DIR"/*.patch)
 if [ ${#patches[@]} -eq 0 ]; then
