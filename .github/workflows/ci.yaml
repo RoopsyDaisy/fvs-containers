@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, fvs-container-build]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Fast: lint + test the Python tooling (fvs_tools) against the uv.lock.
+  python:
+    name: Python lint + tests (fvs_tools)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - name: Pytest (excluding integration tests that need FVS)
+        run: uv run pytest -m "not integration"
+
+  # Build the deliverable images and smoke-test them in-image. This is the real
+  # validation of docker/Dockerfile -- it runs the same scripts/build_images.sh
+  # used on the lab PC (so "CI green" == "builds + works on the workstation").
+  # Compiles FVS from source (FVS_BASE=source); first run is slow (FVS build +
+  # renv restore). Switch to FVS_BASE=ghcr once that path is confirmed, or add a
+  # buildx layer cache, if the build time becomes a problem.
+  images:
+    name: Build images + in-image smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive  # vendor/fvs (+NVEL), fvs-build, fvs-interface
+      - name: Build + smoke test
+        run: bash scripts/build_images.sh
+        env:
+          ENGINE: docker
+          FVS_VARIANT: ie
+          FVS_BASE: source
+
+  # TODO (deferred): nbval on the analysis notebooks. The notebooks execute FVS
+  # via subprocess, so they need the FVS engine on PATH inside a Python env that
+  # also has fvs_tools + the notebook extras -- neither the webgui nor cluster
+  # image carries Python tooling. Wire this up once it can be iterated on a
+  # runner (e.g. stage /opt/fvs/bin out of the cluster image onto PATH, then
+  # `uv run pytest --nbval-lax notebooks/`).

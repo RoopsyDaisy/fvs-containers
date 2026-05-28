@@ -10,11 +10,15 @@
 # Exits non-zero if any guard fails.
 
 suppressMessages({
-  library(fvsOL)
-  library(fs)
   library(DBI)
   library(RSQLite)
 })
+# fvsOL only exists in the WebGUI image; rFVS in both WebGUI and cluster images.
+# Load conditionally so this one smoke test runs in any FVS image (the fvsOL
+# guards self-skip where fvsOL is absent, e.g. the cluster image).
+have_fvsOL <- requireNamespace("fvsOL", quietly = TRUE)
+have_rFVS  <- requireNamespace("rFVS",  quietly = TRUE)
+if (have_fvsOL) suppressMessages({ library(fvsOL); library(fs) })
 
 results <- list()
 check <- function(name, expr) {
@@ -26,9 +30,41 @@ check <- function(name, expr) {
   cat(sprintf("GUARD %-22s %s\n", name, if (ok) "PASS" else "FAIL"))
 }
 
-# Guard 1 - fs drift: fvsOL calls dir_exists()/dir_ls() (fs) by bare name in
-# getVolumes2(); they must resolve at runtime or the session aborts on startup.
-check("fs/getVolumes2", {
+# Locate the FVS binary and read its build version from the startup banner
+# ("FVS VARIANT -- RV:<version>"). Returns the version string, or NA if FVS
+# isn't runnable. Feeds a dummy keyword name so FVS prints the banner, runs in a
+# temp dir to avoid stray files, and strips the NUL bytes FVS embeds in the
+# banner (they otherwise truncate R's captured strings at the first NUL).
+fvs_version <- function(variant = Sys.getenv("FVS_VARIANT", "ie")) {
+  prog    <- paste0("FVS", variant)
+  bin_dir <- Sys.getenv("FVS_BIN", "")
+  exe <-
+    if (nzchar(bin_dir) && file.exists(file.path(bin_dir, prog)))
+      file.path(bin_dir, prog)
+    else if (nzchar(Sys.which(prog)))
+      unname(Sys.which(prog))
+    else {
+      alt <- file.path(".devcontainer", "fvs-bin", prog)  # dev container fallback
+      if (file.exists(alt)) normalizePath(alt) else ""
+    }
+  if (!nzchar(exe)) return(NA_character_)
+  cmd <- sprintf("cd %s && echo __ver__ | %s 2>&1 | tr -d '\\000'",
+                 shQuote(tempdir()), shQuote(normalizePath(exe)))
+  out  <- suppressWarnings(system(cmd, intern = TRUE))
+  line <- grep("RV:", out, value = TRUE)
+  if (!length(line)) return(NA_character_)
+  sub(".*RV:([0-9A-Za-z.]+).*", "\\1", line[1])
+}
+
+# Guard 0 - rFVS present: both images need rFVS for the R-driven workflows
+# (rFVS::fvsMakeKeyFile for batch generation, fvsInteractRun for the interactive
+# track).
+check("rFVS/present", have_rFVS)
+
+# Guard 1 - fs drift (WebGUI only): fvsOL calls dir_exists()/dir_ls() (fs) by
+# bare name in getVolumes2(); they must resolve at runtime or the session aborts
+# on startup. Skipped where fvsOL isn't installed (e.g. the cluster image).
+if (have_fvsOL) check("fs/getVolumes2", {
   v <- fvsOL:::getVolumes2()()
   is.character(v) && length(v) >= 1
 })
@@ -43,6 +79,15 @@ check("rsqlite/temp-write", {
   dbWriteTable(con, "Grps", data.frame(Stand_ID = "", Grp = ""),
                temporary = TRUE, overwrite = TRUE)
   nrow(dbGetQuery(con, "select * from temp.Grps")) >= 0
+})
+
+# Guard 3 - FVS engine present + version stamp: the FVS binary must be runnable
+# and report its build version, so a rebuild proves the engine is wired up and
+# records which version the WebGUI/cluster images carry (provenance + a check
+# that both share the same engine).
+check("fvs/version", {
+  rv <- fvs_version()
+  if (is.na(rv)) FALSE else { cat(sprintf("  FVS engine version RV:%s\n", rv)); TRUE }
 })
 
 failed <- names(Filter(isFALSE, results))

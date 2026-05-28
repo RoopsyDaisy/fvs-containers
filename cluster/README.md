@@ -11,8 +11,9 @@ simulation campaigns — many keyword files run in parallel.
 On a workstation with a container runtime (e.g. the Johnson-lab PC with podman):
 
 ```bash
-# Build the slim FVS engine image for the variant you need
-podman build -f docker/Dockerfile.fvs -t fvs:ie --build-arg FVS_VARIANT=ie .
+# Build the cluster engine image (FVS + R + rFVS) for the variant you need.
+podman build -f docker/Dockerfile --target cluster -t fvs-engine:ie --build-arg FVS_VARIANT=ie .
+# or, the portable wrapper used by CI too:  ENGINE=podman TARGETS=cluster scripts/build_images.sh
 
 # Convert it to an Apptainer image
 cluster/build_sif.sh                 # produces fvs_ie.sif
@@ -21,7 +22,11 @@ cluster/build_sif.sh                 # produces fvs_ie.sif
 Copy `fvs_ie.sif` to the cluster (`scp fvs_ie.sif user@hellgate:~/fvs/`).
 
 Alternatively, push the OCI image to a registry and pull it on the cluster:
-`apptainer pull fvs_ie.sif docker://<registry>/fvs:ie`.
+`apptainer pull fvs_ie.sif docker://<registry>/fvs-engine:ie`.
+
+The cluster image carries R + rFVS as well as the FVS CLI, so the R workflows
+(`scripts/r_workflow/`) — keyword-file generation and the rFVS interactive
+driver — can run on Hellgate, not just the bare `FVS` binary.
 
 ## 2. Stage inputs and build a manifest
 
