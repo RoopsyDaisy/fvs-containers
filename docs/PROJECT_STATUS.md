@@ -117,6 +117,19 @@ by VS Code on the host. (3) the **`.sif`** is `apptainer pull`ed from a registry
 Hellgate, or `build_sif.sh` + scp. **FVS provenance is hybrid**: source-compiled by
 default, GHCR-based via `FVS_BASE=ghcr`.
 
+## Submodule modifications — patches, not forks
+
+We only modify **one** submodule: `vendor/fvs-interface` (3 small compatibility
+patches in `patches/*.patch`, applied to its work tree by `apply_fvsol_patch.sh`).
+`vendor/fvs` / `vendor/fvs-build` are unmodified — their only "dirt" is FVS build
+artifacts + the NVEL nested submodule. So **we deliberately do NOT fork**: patch
+files keep us on upstream commits, make the diff readable, and avoid fork-sync
+maintenance (and the patches should ideally be upstreamed eventually). The pinned
+commits never change from the patches, so `.gitmodules` sets `ignore = dirty` on
+those two submodules — `git status` stays clean but still flags a real pointer
+change. To update upstream: bump the submodule SHA, re-run the build, re-test the
+3 patches.
+
 ## Decisions & non-obvious facts (would waste time to rediscover)
 
 - **fvsOL ships incompatible with its contemporary CRAN packages** → pinning
