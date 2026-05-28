@@ -1,9 +1,15 @@
 [submodule "vendor/fvs"]
 	path = vendor/fvs
 	url = https://github.com/USDAForestService/ForestVegetationSimulator.git
+	# Ignore work-tree dirt (FVS build artifacts + the NVEL nested submodule);
+	# still reports if the pinned commit changes.
+	ignore = dirty
 [submodule "vendor/fvs-interface"]
 	path = vendor/fvs-interface
 	url = https://github.com/USDAForestService/ForestVegetationSimulator-Interface.git
+	# Ignore work-tree dirt (our patches/*.patch applied by apply_fvsol_patch.sh);
+	# still reports if the pinned commit changes.
+	ignore = dirty
 [submodule "vendor/fvs-build"]
 	path = vendor/fvs-build
 	url = https://github.com/Vibrant-Planet-Open-Science/fvs-build.git
