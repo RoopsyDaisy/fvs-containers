@@ -1,0 +1,9 @@
+diff --git a/fvsOL/DESCRIPTION b/fvsOL/DESCRIPTION
+index f34ebe9..0ab480f 100644
+--- a/fvsOL/DESCRIPTION
++++ b/fvsOL/DESCRIPTION
+@@ -17,3 +17,4 @@ License: MIT
+ Roxygen: list(markdown = TRUE)
+ RoxygenNote: 7.3.2
+ Encoding: UTF-8
++StagedInstall: no
