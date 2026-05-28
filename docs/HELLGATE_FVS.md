@@ -4,9 +4,11 @@ Approach doc for batch command-line FVS runs on the University of Montana
 **Hellgate** research cluster. Goal: build many keyword (`.key`) files (e.g. in
 R), then run them in parallel — one FVS invocation per keyword file.
 
-> Status: **draft, not yet tested on Hellgate.** Everything below is derived
-> from UM RCI online docs + the FVS engine's actual CLI behaviour. Items marked
-> **[confirm on cluster]** need verification once we have Hellgate access.
+> Status: the batch **runner and pattern are implemented in [`cluster/`](../cluster/)
+> and validated locally** (dev container, native engine). What's **not yet tested
+> on Hellgate** are the cluster-specific pieces (real `.sif` under Apptainer/FUSE,
+> SLURM submission, partitions, fakeroot, BeeGFS) — derived from UM RCI docs and
+> marked **[confirm on cluster]** below; verify once we have access.
 
 ## TL;DR
 
@@ -83,64 +85,42 @@ There's also a shared container area at `/mnt/beegfs/projects/resources/Containe
 worth checking — an FVS image may already be there, or it may be a place to
 publish ours for other users **[confirm on cluster]**.
 
-## Running one stand (sanity check)
+## The batch runner (implemented in `cluster/`)
+
+The concrete scripts live in [`cluster/`](../cluster/) and are **manifest-driven**
+— one keyword-file path per line; SLURM array task *N* runs line *N*:
+
+- [`cluster/build_sif.sh`](../cluster/build_sif.sh) — convert the FVS OCI image to a `.sif`.
+- [`cluster/fvs_array.sbatch`](../cluster/fvs_array.sbatch) — the SLURM array job.
+- [`cluster/fvs_run_one.sh`](../cluster/fvs_run_one.sh) — the per-task unit: make an isolated run dir, stage shared inputs, run `FVS<variant>` on the keyword filename via stdin (`apptainer exec` if `SIF` is set, else the native binary).
+- [`cluster/run_local.sh`](../cluster/run_local.sh) — run the same batch with **no scheduler/container** against a native binary (testing / non-HPC machines).
+
+Full how-to in [`cluster/README.md`](../cluster/README.md). The essentials:
 
 ```bash
-mkdir -p run01 && cp mystand.key run01/ && cd run01
-echo mystand.key | apptainer exec --bind "$PWD" /mnt/beegfs/projects/<you>/containers/fvs_ie.sif FVSie
-ls   # -> mystand.out, mystand.trl, mystand.sum, (mystand.db)
+ls inputs/*.key > keyfiles.txt          # manifest
+sbatch --array=1-$(wc -l < keyfiles.txt)%50 \
+  --export=SIF=$PWD/fvs_ie.sif,VARIANT=ie,MANIFEST=$PWD/keyfiles.txt,FVS_INPUT=$PWD/inputs/FVS_Data.db \
+  cluster/fvs_array.sbatch
 ```
 
-## Running many in parallel (SLURM job array)
+- Each task runs in its own `runs/<keyfile>/` dir, so reused output names (e.g. `FVSOut.db`) never collide.
+- `FVS_INPUT` stages a **shared inventory DB** (read by the keyword files' relative `DSNin`) into each run dir — the typical "batch built in R" pattern. Omit if the keyword files are self-contained.
+- `%50` caps concurrency; add `--account`/`--partition` per Hellgate policy.
+- The same `fvs_run_one.sh` runs on the cluster and locally, so only the engine wrapper (`apptainer exec` vs native) differs.
 
-Draft `fvs_array.sbatch` — **placeholders and resources need tuning [confirm on cluster]**:
-
-```bash
-#!/usr/bin/env bash
-#SBATCH --job-name=fvs-batch
-#SBATCH --array=0-999%50          # 0..N-1 tasks; %50 caps concurrency — set N and cap per partition limits
-#SBATCH --cpus-per-task=1         # FVS CLI is single-threaded per run
-#SBATCH --mem=2G                  # per task; tune to your stand sizes
-#SBATCH --time=00:30:00           # per task walltime
-#SBATCH --output=logs/fvs_%A_%a.out
-#SBATCH --error=logs/fvs_%A_%a.err
-# #SBATCH --partition=<TBD>       # set via `sinfo` on Hellgate
-
-set -euo pipefail
-SIF=/mnt/beegfs/projects/<you>/containers/fvs_ie.sif
-RUNDIR=/mnt/beegfs/projects/<you>/fvs_runs        # holds the *.key files
-VARIANT=ie
-
-# Stable task -> keyword-file mapping (sorted), so re-runs are reproducible.
-mapfile -t KEYS < <(cd "$RUNDIR" && ls -1 *.key | sort)
-KEY="${KEYS[$SLURM_ARRAY_TASK_ID]:-}"
-[ -n "$KEY" ] || { echo "no key for task $SLURM_ARRAY_TASK_ID"; exit 0; }
-
-WORK="$RUNDIR/out/${KEY%.key}"
-mkdir -p "$WORK"
-cp "$RUNDIR/$KEY" "$WORK/"
-cd "$WORK"
-echo "$KEY" | apptainer exec --bind "$WORK" "$SIF" "FVS${VARIANT}"
-```
-
-Submit, sizing the array to the number of keyword files:
-
-```bash
-cd /mnt/beegfs/projects/<you>/fvs_runs
-N=$(ls -1 *.key | wc -l)
-mkdir -p logs out
-sbatch --array=0-$((N-1))%50 fvs_array.sbatch
-```
-
-(Once this works we'll wrap it in a small `submit_fvs_batch.sh` so you just point
-it at a directory of `.key` files.)
+**Validated locally** (dev container, native engine, via `run_local.sh`): a batch
+of keyword files each produced its own isolated `runs/<name>/` with a populated
+output DB and no collisions, and per-task failures are reported (non-zero exit).
+What remains **Hellgate-only**: `apptainer exec` of a real `.sif` (needs FUSE),
+real SLURM submission, and the specifics below.
 
 ## Collecting outputs
 
-Each task leaves a self-contained `out/<stand>/` directory. If keyword files
-write to per-run SQLite DBs you can merge them afterward, or point all runs at
-one shared DB only if you serialize writes (FVS appends — concurrent writers to
-one SQLite file will contend). Simplest: per-run DBs, merged in a final step.
+Each task leaves a self-contained `runs/<stand>/` directory. Keep **per-run
+output DBs** (the default — each run writes into its own dir) and merge them in a
+final step; don't point all runs at one shared output DB, since FVS appends and
+concurrent writers to one SQLite file contend.
 
 ## Open questions to confirm with cluster access (next week)
 
