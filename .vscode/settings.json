@@ -1,5 +1,10 @@
 {
     "chat.mcp.access": "registry",
     "jupyter.runStartupCommands": [],
-    "notebook.output.scrolling": true
+    "notebook.output.scrolling": true,
+    // Don't surface the vendored submodules as separate repos in Source Control:
+    // their only changes are our applied patches/*.patch and FVS build artifacts,
+    // never the pinned commit (CLI git status ignores them via .gitmodules).
+    "git.detectSubmodules": false,
+    "git.ignoreSubmodules": true
 }
