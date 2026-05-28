@@ -112,7 +112,8 @@ FROM fvs-r-base AS webgui
 RUN R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
-COPY scripts/smoke_test.R /opt/fvs/smoke_test.R  # baked: run with no bind mount
+# baked smoke test (run with no bind mount), as in the cluster target
+COPY scripts/smoke_test.R /opt/fvs/smoke_test.R
 RUN useradd -m fvs
 USER fvs
 WORKDIR /work
