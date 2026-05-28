@@ -51,20 +51,23 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
   cross-image (fvsOL guards self-skip where fvsOL is absent, e.g. the cluster
   image), so one gate works in both deliverable images.
 
-**Authored this session, PENDING BUILD VALIDATION** (the dev container has no
-container runtime, so these were inspection-verified only — build them on a
-podman/docker host, e.g. `ENGINE=podman bash scripts/build_images.sh`, or via the
-first CI run, before relying on them):
-
 - **Consolidated `docker/Dockerfile`** (replaces `Dockerfile.fvs` +
   `Dockerfile.webgui`): one common base `fvs-r-base` (FVS + R + renv pkgs + rFVS)
   with `webgui` (+ fvsOL/Shiny) and `cluster` (FVS + R + rFVS) targets. Hybrid FVS
   provenance via `--build-arg FVS_BASE=source` (default, compiles from
-  `vendor/fvs`) or `ghcr` (bases off `usfs-fvs:FS2026.1` — the GHCR copy path is
-  the one unverified piece, see the NOTE in the file).
+  `vendor/fvs`) or `ghcr` (bases off `usfs-fvs:FS2026.1`). **Validated on
+  podman/Fedora** (`ENGINE=podman scripts/build_images.sh`): both images build
+  from source and pass the in-image smoke test; both report the same engine
+  (`RV:20260401`), and the cross-image gate self-skips the fvsOL guard in
+  `fvs-engine`. Building this image surfaced + fixed three latent bugs the
+  never-built original Dockerfiles carried (renv self-update EXDEV + missing
+  `curl`; a dangling submodule `.git` breaking `git apply`; podman SELinux/UID
+  bind-mount denial → smoke test baked into the image). **Still unverified:** the
+  `FVS_BASE=ghcr` copy path (default `source` is what was validated).
 - **CI** (`.github/workflows/ci.yaml`): a `python` job (uv sync + pytest) and an
-  `images` job that runs `scripts/build_images.sh` (build webgui+cluster + in-image
-  smoke test) — so "CI green" == "builds + works on the lab PC".
+  `images` job that runs `scripts/build_images.sh` — so "CI green" == "builds +
+  works on the lab PC". The `images` path is now proven locally; the GitHub
+  Actions run itself is unverified until first pushed.
 
 ## Key files
 
@@ -179,12 +182,10 @@ Two distinct ways to do conditional "logic between years":
    batch (R+rFVS+`.so` image, per-task `fvsInteractRun` driver) is only needed if
    between-cycle R logic must run at HPC scale — the reference workflow doesn't,
    so it's deferred until a concrete need appears.
-3. **Build validation (next action, needs a container runtime).** The
-   consolidated `docker/Dockerfile` + CI were authored but not built (no runtime
-   in the dev container). On the lab PC: `ENGINE=podman bash scripts/build_images.sh`
-   (builds `webgui` + `cluster`, runs the in-image smoke test). The one piece to
-   confirm is the `FVS_BASE=ghcr` copy path against the real `usfs-fvs` image; the
-   default `FVS_BASE=source` mirrors the previously-green from-source builds.
+3. **Build validation — DONE on podman/Fedora** (`ENGINE=podman scripts/build_images.sh`):
+   both images build from source and pass the in-image smoke test (both report
+   `RV:20260401`). Remaining: confirm the `FVS_BASE=ghcr` copy path against the
+   real `usfs-fvs` image, and the GitHub Actions run once pushed.
 4. **Hellgate validation (needs cluster access).** See the "[confirm on
    cluster]" list in `docs/HELLGATE_FVS.md`: partitions/limits, login-node
    network egress, fakeroot, modules, BeeGFS paths, real `.sif` under Apptainer.
