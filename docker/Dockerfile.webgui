@@ -75,6 +75,8 @@ ENV LD_LIBRARY_PATH=/opt/fvs/bin
 ENV FVS_BIN=/opt/fvs/bin
 ENV FVS_VARIANT=${FVS_VARIANT}
 ENV PORT=3838
+# Headless rgl: null device (no X11); 3D renders via WebGL in the browser.
+ENV RGL_USE_NULL=TRUE
 
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
 

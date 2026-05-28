@@ -13,6 +13,9 @@ FROM docker.io/rocker/r2u:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+# Headless rgl: use the null device (no X11). fvsOL depends on rgl; the WebGUI
+# renders 3D via WebGL in the browser, so server-side X11 is never needed.
+ENV RGL_USE_NULL=TRUE
 
 # Toolchain + FVS runtime libs, dev conveniences and Python (for the salvaged
 # batch tools). The fvsOL R package set is NOT installed here; it is restored
