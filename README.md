@@ -1,51 +1,79 @@
-# Template for new projects that run through vscode devcontainers on the Johnson lab PC
+# FVS in a box
 
-# Project Name
+Reproducible builds of the **Forest Vegetation Simulator (FVS)** and the
+**FVSOnline WebGUI**, packaged as containers for foresters and researchers.
 
-Brief description of your project.
+This repo compiles FVS from pinned upstream source (no opaque prebuilt binaries)
+and ships it three ways:
 
-## Quick Start
+| You want to… | Use | Audience |
+|---|---|---|
+| Click through FVS in a browser | **WebGUI image** | foresters, students, on a laptop |
+| Run keyword files from the command line | **slim engine image** | scripted / reproducible runs |
+| Run thousands of simulations | **Apptainer + SLURM** | researchers on the Hellgate cluster |
 
-1. Make sure Dev Containers in vscode is using podman rather than docker
-2. **Clone and open in VS Code** with Dev Containers extension
-3. VS Code will prompt to "Reopen in Container" - accept
-4. Wait for container build and `uv sync` to complete
-5. **Open `default.code-workspace`** to see data mounts in the explorer
-6. Start coding!
+FVS is built from the [`vendor/fvs`](vendor/fvs) submodule (pinned to a tagged
+release) including the NVEL volume-library submodule. The build recipe and the two
+undocumented Linux gotchas it handles are written up in [docs/BUILD.md](docs/BUILD.md).
 
-> **Tip**: Opening the `.code-workspace` file gives you a multi-root workspace with 
-> `/run/media` and `/run/data_raid5` visible in the file explorer alongside your code.
+> **Clone with submodules** (the FVS source nests one of its own):
+> ```bash
+> git clone --recurse-submodules <this-repo>
+> # or in an existing checkout: git submodule update --init --recursive
+> ```
 
-## Manual Setup (without devcontainer)
+## The WebGUI (foresters)
 
-\`\`\`bash
-# Install uv if not present
-curl -LsSf https://astral.sh/uv/install.sh | sh
+A familiar point-and-click FVSOnline interface, with no local R, FVS, or Fortran
+install required.
 
-# Install dependencies
-uv sync
+```bash
+podman build -f docker/Dockerfile.webgui -t fvs-webgui:ie --build-arg FVS_VARIANT=ie .
+podman run --rm -p 3838:3838 -v "$PWD/myproject:/work" fvs-webgui:ie
+# then open http://localhost:3838
+```
 
-# Activate environment
-source .venv/bin/activate
-\`\`\`
+On **macOS**, run the same image via Docker Desktop or OrbStack — the container's
+port 3838 is forwarded to the Mac, so you just open the URL in your browser.
 
-## Development
+## The command line (scripted runs)
 
-\`\`\`bash
-# Run tests
-uv run pytest
+```bash
+podman build -f docker/Dockerfile.fvs -t fvs:ie --build-arg FVS_VARIANT=ie .
+echo mykeys.key | podman run -i --rm -v "$PWD:/work" fvs:ie FVSie
+# FVS writes FVSOut.db and report files next to your keyword file
+```
 
-# Lint
-uv run ruff check src/
+## The cluster (big simulation campaigns)
 
-# Format
-uv run black src/ tests/
-\`\`\`
+Convert the engine image to an Apptainer `.sif` and fan runs out with a SLURM
+array job. See [cluster/README.md](cluster/README.md).
 
-## Project Structure
+## Developing this repo
 
-- `src/<package>/` - Main package code
-- `tests/` - Test files
-- `notebooks/` - Jupyter notebooks
-- `.devcontainer/` - VS Code devcontainer config
-- `.github/agents/` - Copilot agent definitions
+Open it in VS Code and "Reopen in Container". The devcontainer builds on the same
+base as the WebGUI image, compiles FVS from the submodule on create, installs the
+rFVS/fvsOL packages, and forwards port 3838. Then:
+
+```bash
+bash scripts/run_webgui.sh      # serve the WebGUI on the forwarded port 3838
+```
+
+Build any variant locally without the container:
+
+```bash
+scripts/build_fvs.sh vendor/fvs ie /tmp/fvs-ie   # -> FVSie + shared libs
+```
+
+## Layout
+
+```
+vendor/fvs              FVS engine source (submodule, pinned; nests volume/NVEL)
+vendor/fvs-interface    rFVS + fvsOL (WebGUI) source (submodule, pinned)
+scripts/build_fvs.sh    compile one FVS variant from source
+docker/Dockerfile.fvs   slim engine image
+docker/Dockerfile.webgui  FVS + R/Shiny WebGUI image
+cluster/                Apptainer .sif build + SLURM array template
+docs/BUILD.md           how the build works (and the upstream gaps it fills)
+src/fvs_tools/          Python helpers for keyword generation + reading FVSOut.db
+```

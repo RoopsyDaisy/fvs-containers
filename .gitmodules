@@ -1,0 +1,9 @@
+[submodule "vendor/fvs"]
+	path = vendor/fvs
+	url = https://github.com/USDAForestService/ForestVegetationSimulator.git
+[submodule "vendor/fvs-interface"]
+	path = vendor/fvs-interface
+	url = https://github.com/USDAForestService/ForestVegetationSimulator-Interface.git
+[submodule "vendor/fvs-build"]
+	path = vendor/fvs-build
+	url = https://github.com/Vibrant-Planet-Open-Science/fvs-build.git

@@ -47,6 +47,19 @@ wandb/
 # Fortran unit files (from FVS)
 fort.*
 
+# FVS / fvsOL generated databases, spatial data, and runtime state
+*.db
+*.RData
+projectId.txt
+ProjectIsLocked.txt
+projectIsLocked.txt
+
+# Generated reports
+MonteCarloReport_*.html
+
+# Locally built FVS binaries (compiled from vendor/fvs by the devcontainer)
+.devcontainer/fvs-bin/
+
 # OS
 .DS_Store
 Thumbs.db
