@@ -37,17 +37,23 @@ COPY scripts/build_fvs.sh /src/build_fvs.sh
 RUN bash /src/build_fvs.sh /src/fvs "${FVS_VARIANT}" /opt/fvs/bin
 
 # --- FVS provider B: prebuilt GHCR image (opt-in: --build-arg FVS_BASE=ghcr) ---
-# NOTE: assumes the usfs-fvs image exposes FVS<variant> on PATH and ships the
-# FVS<variant>.so embedder that rFVS loads. The exact in-image path could not be
-# verified here (no container runtime); confirm against the published image and
-# adjust the copy below if needed before relying on FVS_BASE=ghcr.
+# The usfs-fvs image (confirmed FS2026.1) keeps the CLI FVS<variant> on PATH but
+# the FVS<variant>.so embedders in /opt/fvs-bundle (also mirrored in
+# /usr/local/lib) -- NOT next to the CLI. Copy both into /opt/fvs/bin to match
+# the source build's layout, and fail loudly if the .so is missing so we never
+# ship a CLI-only image that breaks rFVS (the smoke test's fvsLoad guard is the
+# runtime backstop).
 FROM ghcr.io/vibrant-planet-open-science/usfs-fvs:${FVS_TAG} AS fvs-ghcr
 ARG FVS_VARIANT
-RUN mkdir -p /opt/fvs/bin \
-    && exe="$(command -v FVS${FVS_VARIANT})" \
-    && cp "$exe" /opt/fvs/bin/ \
-    && so="$(dirname "$exe")/FVS${FVS_VARIANT}.so" \
-    && { [ -f "$so" ] && cp "$so" /opt/fvs/bin/ || true; }
+RUN set -eu; mkdir -p /opt/fvs/bin; \
+    exe="$(command -v "FVS${FVS_VARIANT}")"; \
+    cp "$exe" /opt/fvs/bin/; \
+    so=""; \
+    for d in /opt/fvs-bundle /usr/local/lib "$(dirname "$exe")"; do \
+      if [ -f "$d/FVS${FVS_VARIANT}.so" ]; then so="$d/FVS${FVS_VARIANT}.so"; break; fi; \
+    done; \
+    [ -n "$so" ] || { echo "FVS${FVS_VARIANT}.so not found in usfs-fvs image" >&2; exit 1; }; \
+    cp "$so" /opt/fvs/bin/
 
 # --- select the FVS provider via FVS_BASE ------------------------------------
 FROM fvs-${FVS_BASE} AS fvs-bin
