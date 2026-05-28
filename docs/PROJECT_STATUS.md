@@ -62,8 +62,12 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
   `fvs-engine`. Building this image surfaced + fixed three latent bugs the
   never-built original Dockerfiles carried (renv self-update EXDEV + missing
   `curl`; a dangling submodule `.git` breaking `git apply`; podman SELinux/UID
-  bind-mount denial → smoke test baked into the image). **Still unverified:** the
-  `FVS_BASE=ghcr` copy path (default `source` is what was validated).
+  bind-mount denial → smoke test baked into the image). **Both FVS_BASE paths
+  verified on podman/Fedora**: `source` (compiles from `vendor/fvs`) and `ghcr`
+  (extracts CLI + `.so` from `usfs-fvs:FS2026.1`; the `.so`s live in
+  `/opt/fvs-bundle`, not beside the CLI) both pass the smoke test incl. the
+  `rFVS/fvsLoad` embedder guard. `source` stays canonical (reproducible, no
+  registry dependency, patchable); `ghcr` is the faster no-compile alternative.
 - **CI** (`.github/workflows/ci.yaml`): a `python` job (uv sync + pytest) and an
   `images` job that runs `scripts/build_images.sh` — so "CI green" == "builds +
   works on the lab PC". The `images` path is now proven locally; the GitHub
@@ -183,9 +187,10 @@ Two distinct ways to do conditional "logic between years":
    between-cycle R logic must run at HPC scale — the reference workflow doesn't,
    so it's deferred until a concrete need appears.
 3. **Build validation — DONE on podman/Fedora** (`ENGINE=podman scripts/build_images.sh`):
-   both images build from source and pass the in-image smoke test (both report
-   `RV:20260401`). Remaining: confirm the `FVS_BASE=ghcr` copy path against the
-   real `usfs-fvs` image, and the GitHub Actions run once pushed.
+   both images build and pass the in-image smoke test (incl. the `rFVS/fvsLoad`
+   embedder guard; both report `RV:20260401`), on **both** `FVS_BASE=source` and
+   `FVS_BASE=ghcr`. Remaining: the GitHub Actions run once pushed; and the
+   Hellgate `.sif`/SLURM path (item 4).
 4. **Hellgate validation (needs cluster access).** See the "[confirm on
    cluster]" list in `docs/HELLGATE_FVS.md`: partitions/limits, login-node
    network egress, fakeroot, modules, BeeGFS paths, real `.sif` under Apptainer.
