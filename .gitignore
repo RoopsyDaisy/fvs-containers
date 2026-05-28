@@ -57,6 +57,9 @@ projectIsLocked.txt
 # Generated reports
 MonteCarloReport_*.html
 
+# Large report figures (regenerable from the notebooks; kept local, not in git)
+docs/ReportImages/
+
 # Locally built FVS binaries (compiled from vendor/fvs by the devcontainer)
 .devcontainer/fvs-bin/
 
