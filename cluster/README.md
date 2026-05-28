@@ -58,9 +58,13 @@ sbatch --array=1-$(wc -l < keyfiles.txt)%50 \
 - Drop `FVS_INPUT=...` if each keyword file is self-contained.
 - Outputs land in `runs/<keyfile-name>/`; logs in `logs/fvs_<jobid>_<taskid>.{out,err}`.
 
-The job runs `FVS<variant>` inside the container with the keyword filename on
-stdin; Apptainer bind-mounts the working directory, so all FVS output files
-appear on the host filesystem under each run directory.
+The job runs `FVS<variant> --keywordfile=<name>` inside the container; Apptainer
+bind-mounts the working directory, so all FVS output files appear on the host
+filesystem under each run directory. (`--keywordfile=` is used rather than piping
+the name on stdin because it works for both database-style and legacy flat-file
+keyword files — for the latter FVS derives the `.tre`/`.out`/`.trl` names from the
+keyword base name. A sibling `<base>.tre` next to a `.key` is staged into the run
+dir automatically.)
 
 ## 4. Test the batch locally (no SLURM / Apptainer)
 
@@ -74,13 +78,15 @@ FVS_BIN=.devcontainer/fvs-bin VARIANT=ie FVS_INPUT="$PWD/inputs/FVS_Data.db" \
 ```
 
 It reports `[ok]`/`[FAIL] (exit N)` per keyword file and exits non-zero if any
-run failed. (Verified locally: a batch of keyword files each produces its own
-isolated `runs/<name>/` with a populated output DB and no collisions.)
+run failed. FVS signals normal completion with `STOP 20` (and `STOP 10` for
+completed-with-warnings); the runner treats exit 0/10/20 as success. (Verified
+locally: a batch of keyword files each produces its own isolated `runs/<name>/`
+with a populated output DB and no collisions.)
 
 ## Notes
 
-- The per-task work (isolated run dir, stage `FVS_INPUT`, run FVS on the
-  keyword file via stdin) lives in `fvs_run_one.sh`, shared by both the SLURM
+- The per-task work (isolated run dir, stage `FVS_INPUT` + any sibling `.tre`,
+  run `FVS --keywordfile=`) lives in `fvs_run_one.sh`, shared by both the SLURM
   array job and `run_local.sh` so the cluster and local paths stay identical —
   only the engine differs (`apptainer exec` vs the native binary).
 - Apptainer on Hellgate aliases `singularity`; either command works.

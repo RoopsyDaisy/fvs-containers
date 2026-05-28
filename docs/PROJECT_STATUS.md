@@ -49,6 +49,7 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
 | WebGUI launch | `scripts/run_webgui.sh`, `docker/webgui-app.R` |
 | Regression gate | `scripts/smoke_test.R` |
 | HPC batch | `cluster/` (`fvs_run_one.sh`, `fvs_array.sbatch`, `run_local.sh`, `build_sif.sh`, `README.md`) |
+| R workflows | `scripts/r_workflow/` — batch track (`build_input_db.R` + `generate_keyfiles.R` → `cluster/`) and interactive track (`project_stand.R`, rFVS); reuses the course reference `scripts/reference_scripts/*.R` |
 | Docs | `docs/HELLGATE_FVS.md` (HPC approach), this file |
 | Submodules | `vendor/fvs` (USDA FVS source), `vendor/fvs-build` (Meson build), `vendor/fvs-interface` (rFVS + fvsOL) |
 
@@ -70,10 +71,17 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
 - **git identity is host-delegated**: VS Code copies the host (`~/.gitconfig`)
   into the container at creation. The Fedora host now has it set; in-container
   commits before a rebuild used `git -c user.name=… -c user.email=…`.
-- **FVS CLI reads the keyword *filename* on stdin** (`echo x.key | FVSie`), NOT
-  `--keywordfile=`. (rFVS's `fvsSetCmdLine("--keywordfile=…")` is the library
-  path, which does accept the flag.) FVS exits 0 on success, non-zero (e.g. 10,
-  20) on data/keyword errors. Outputs land in the cwd → each run needs its own dir.
+- **Run method depends on keyword-file style (verified 2026-05-28).**
+  `FVSie --keywordfile=x.key` works for **all** keyword files — FVS derives the
+  aux filenames (`.tre`/`.out`/`.trl`) from the keyword base name and runs
+  non-interactively; this is what the batch runner uses. `echo x.key | FVSie`
+  (stdin) works **only** for self-contained *database-style* keyword files
+  (`DSNin`/`StandSQL`/`TreeSQL` + `DSNOut`); for *flat-file* keyword files
+  (`.key` + separate `.tre`) stdin drops FVS into interactive filename prompting
+  and fails. **`STOP 20` = normal completion** (and `STOP 10` = with-warnings);
+  both are success — the runner treats exit 0/10/20 as success. Data/keyword
+  problems are logged to the `FVS_Error` table, not the exit code. Outputs land
+  in the cwd → each run needs its own dir.
 - **Apptainer/SLURM can't be faithfully tested in the dev container** (no
   `/dev/fuse` → no real `.sif`; user namespaces *are* available). Real cluster
   validation is Hellgate-only.
@@ -98,16 +106,22 @@ Two distinct ways to do conditional "logic between years":
 
 ## Roadmap / plan
 
-1. **Forester config-generation (Path 1, most likely the real need).** R as a
-   keyword-file *generator*: template N keyword files (varying Event Monitor
-   thresholds / treatments — the Monte Carlo pattern), run via the existing CLI
-   batch. Mine the Monte Carlo notebooks (`notebooks/`, `scripts/*monte*`,
-   `scripts/run_fvs_lubrecht_plot48.py`) and microfvs's KCP treatment library
-   (`github.com/Vibrant-Planet-Open-Science/microfvs`) for building blocks.
-2. **rFVS-driven batch (Path 2, if true in-sim R is needed).** Build an
-   R+rFVS+`.so` batch image; per-task R driver based on `fvsInteractRun`.
-   Decide Path 1 vs 2 from a concrete forester example (threshold→treatment ⇒
-   Path 1; must call external code mid-run ⇒ Path 2).
+1. **Forester config-generation (Path 1) — BUILT.** `scripts/r_workflow/`: R as a
+   keyword-file *generator*. `build_input_db.R` writes the inventory CSVs to an
+   FVS `FVS_Data.db` (FVS_StandInit/FVS_TreeInit); `generate_keyfiles.R` templates
+   one *database-style* keyword file per stand via **`rFVS::fvsMakeKeyFile()`**
+   (FVS's own generator, reused — not reinvented) + a manifest, run via the
+   existing `cluster/` batch. Verified end-to-end locally (296 stands → DB →
+   keyfiles → 0-failure batch → populated `FVSOut.db`). To sweep Event-Monitor
+   thresholds/treatments (the Monte Carlo pattern) pass extra records via
+   `fvsMakeKeyFile(moreKeywords=...)`; further building blocks in the Python
+   `src/fvs_tools/monte_carlo/` and microfvs's KCP library.
+2. **rFVS interactive (Path 2) — single-stand BUILT.** `scripts/r_workflow/project_stand.R`
+   drives FVS as a library via `fvsLoad` + `fvsInteractRun`, harvesting per-cycle
+   tree lists + summary into R in-memory (verified on CARB_2). A *parallel* rFVS
+   batch (R+rFVS+`.so` image, per-task `fvsInteractRun` driver) is only needed if
+   between-cycle R logic must run at HPC scale — the reference workflow doesn't,
+   so it's deferred until a concrete need appears.
 3. **Hellgate validation (needs cluster access).** See the "[confirm on
    cluster]" list in `docs/HELLGATE_FVS.md`: partitions/limits, login-node
    network egress, fakeroot, modules, BeeGFS paths, real `.sif` under Apptainer.
