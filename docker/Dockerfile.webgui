@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Restore the pinned CRAN package set from renv.lock into the site library
 # (P3M binaries). The runtime app finds them on the default library path.
-RUN R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-15")'
+RUN R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-27")'
 COPY renv.lock /tmp/renv.lock
 RUN R -q -e 'renv::restore(lockfile="/tmp/renv.lock", library="/usr/local/lib/R/site-library", prompt=FALSE)'
 

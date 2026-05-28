@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # r2u's bspm hook so install.packages / the renv bootstrap resolve from the
 # pinned P3M snapshot instead of apt, and pre-install renv for postCreate.
 RUN sed -i 's/^suppressMessages(bspm::enable())/# bspm disabled: R packages are managed by renv (see renv.lock)/' /etc/R/Rprofile.site \
-    && R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-15")'
+    && R -q -e 'install.packages("renv", repos="https://packagemanager.posit.co/cran/__linux__/noble/2026-05-27")'
 
 # uv for the Python batch tooling
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
