@@ -16,12 +16,15 @@ FROM docker.io/ubuntu:24.04 AS builder
 ARG FVS_VARIANT
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        gfortran gcc g++ make cmake ca-certificates \
+        gfortran gcc g++ meson ninja-build ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-# Vendored FVS source (submodule, including the NVEL nested submodule).
+# Vendored FVS source (submodule, incl. the NVEL nested submodule) plus the
+# fvs-build Meson overlay, copied as a sibling so build_fvs.sh's default
+# overlay path (<dirname src>/fvs-build) resolves.
 COPY vendor/fvs /src/fvs
+COPY vendor/fvs-build /src/fvs-build
 COPY scripts/build_fvs.sh /src/build_fvs.sh
 RUN bash /src/build_fvs.sh /src/fvs "${FVS_VARIANT}" /opt/fvs/bin
 
@@ -32,7 +35,7 @@ FROM docker.io/ubuntu:24.04 AS runtime
 ARG FVS_VARIANT
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libgfortran5 libstdc++6 \
+        libgfortran5 libquadmath0 libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/fvs/bin /opt/fvs/bin

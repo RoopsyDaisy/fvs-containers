@@ -20,8 +20,8 @@ ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 # libraries those R packages need at runtime (derived via pak::pkg_sysreqs for
 # ubuntu-24.04), since renv installs R binaries but not their apt dependencies.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        # build + run FVS
-        gfortran gcc g++ make cmake git ca-certificates \
+        # build + run FVS (meson + ninja drive the fvs-build overlay)
+        gfortran gcc g++ make meson ninja-build git ca-certificates \
         libgfortran5 libquadmath0 libstdc++6 \
         # dev conveniences
         sudo curl rsync openssh-client less nano \
