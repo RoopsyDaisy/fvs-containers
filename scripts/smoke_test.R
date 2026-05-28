@@ -30,26 +30,30 @@ check <- function(name, expr) {
   cat(sprintf("GUARD %-22s %s\n", name, if (ok) "PASS" else "FAIL"))
 }
 
-# Locate the FVS binary and read its build version from the startup banner
-# ("FVS VARIANT -- RV:<version>"). Returns the version string, or NA if FVS
-# isn't runnable. Feeds a dummy keyword name so FVS prints the banner, runs in a
-# temp dir to avoid stray files, and strips the NUL bytes FVS embeds in the
-# banner (they otherwise truncate R's captured strings at the first NUL).
+# Locate the FVS bin directory (the dir holding FVS<variant> + FVS<variant>.so):
+# FVS_BIN env, else PATH, else the dev-container fallback. "" if not found.
+fvs_bin_dir <- function(variant = Sys.getenv("FVS_VARIANT", "ie")) {
+  prog <- paste0("FVS", variant)
+  bd   <- Sys.getenv("FVS_BIN", "")
+  if (nzchar(bd) && file.exists(file.path(bd, prog))) return(bd)
+  w <- Sys.which(prog)
+  if (nzchar(w)) return(dirname(unname(w)))
+  alt <- file.path(".devcontainer", "fvs-bin")  # dev container fallback
+  if (file.exists(file.path(alt, prog))) return(normalizePath(alt))
+  ""
+}
+
+# Read FVS's build version from the startup banner ("FVS VARIANT -- RV:<version>").
+# Returns the version string, or NA if FVS isn't runnable. Feeds a dummy keyword
+# name so FVS prints the banner, runs in a temp dir to avoid stray files, and
+# strips the NUL bytes FVS embeds in the banner (they otherwise truncate R's
+# captured strings at the first NUL).
 fvs_version <- function(variant = Sys.getenv("FVS_VARIANT", "ie")) {
-  prog    <- paste0("FVS", variant)
-  bin_dir <- Sys.getenv("FVS_BIN", "")
-  exe <-
-    if (nzchar(bin_dir) && file.exists(file.path(bin_dir, prog)))
-      file.path(bin_dir, prog)
-    else if (nzchar(Sys.which(prog)))
-      unname(Sys.which(prog))
-    else {
-      alt <- file.path(".devcontainer", "fvs-bin", prog)  # dev container fallback
-      if (file.exists(alt)) normalizePath(alt) else ""
-    }
-  if (!nzchar(exe)) return(NA_character_)
+  bd <- fvs_bin_dir(variant)
+  if (!nzchar(bd)) return(NA_character_)
+  exe <- file.path(bd, paste0("FVS", variant))
   cmd <- sprintf("cd %s && echo __ver__ | %s 2>&1 | tr -d '\\000'",
-                 shQuote(tempdir()), shQuote(normalizePath(exe)))
+                 shQuote(tempdir()), shQuote(exe))
   out  <- suppressWarnings(system(cmd, intern = TRUE))
   line <- grep("RV:", out, value = TRUE)
   if (!length(line)) return(NA_character_)
@@ -88,6 +92,20 @@ check("rsqlite/temp-write", {
 check("fvs/version", {
   rv <- fvs_version()
   if (is.na(rv)) FALSE else { cat(sprintf("  FVS engine version RV:%s\n", rv)); TRUE }
+})
+
+# Guard 4 - rFVS can LOAD the engine: actually dyn.load the FVS<variant>.so
+# embedder via rFVS::fvsLoad, not just check the rFVS package exists. The
+# interactive workflow (fvsInteractRun) needs this, and a CLI-only image (e.g. a
+# GHCR base that ships FVS<variant> but not FVS<variant>.so) would fail HERE while
+# passing fvs/version -- so this is what validates the .so in any built image.
+if (have_rFVS) check("rFVS/fvsLoad", {
+  bd <- fvs_bin_dir()
+  if (nzchar(bd)) {
+    suppressMessages(rFVS::fvsLoad(
+      fvsProgram = paste0("FVS", Sys.getenv("FVS_VARIANT", "ie")), bin = bd))
+    exists(".FVSLOADEDLIBRARY", envir = .GlobalEnv)
+  } else FALSE
 })
 
 failed <- names(Filter(isFALSE, results))
