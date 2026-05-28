@@ -47,14 +47,15 @@ for t in $TARGETS; do
     -t "$tag" .
 done
 
-# Smoke test inside each built image. smoke_test.R self-skips the fvsOL guards
+# Smoke test inside each built image. smoke_test.R is baked into the image (at
+# /opt/fvs/smoke_test.R), so it runs with no bind mount -- avoids host bind-mount
+# permission issues (SELinux/UID under podman). It self-skips the fvsOL guards
 # where fvsOL is absent (the cluster image), so the same gate works for both.
-# The repo is mounted read-only so the script is available without baking it in.
 if [ "$SMOKE" = "1" ]; then
   for t in $TARGETS; do
     tag="$(img_for "$t")"
     echo ">>> smoke test in $tag"
-    "$ENGINE" run --rm -v "$PWD:/repo:ro" -w /repo "$tag" Rscript scripts/smoke_test.R
+    "$ENGINE" run --rm "$tag" Rscript /opt/fvs/smoke_test.R
   done
 fi
 

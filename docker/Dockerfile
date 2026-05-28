@@ -99,6 +99,9 @@ ENV FVS_VARIANT=${FVS_VARIANT}
 # Carries R + rFVS so both the keyword-file generation (rFVS::fvsMakeKeyFile) and
 # the rFVS interactive workflow can run on the cluster, not just the bare CLI.
 FROM fvs-r-base AS cluster
+# Baked so the smoke test runs with no bind mount (avoids podman SELinux/UID
+# mount issues): `<engine> run --rm <image> Rscript /opt/fvs/smoke_test.R`.
+COPY scripts/smoke_test.R /opt/fvs/smoke_test.R
 RUN useradd -m fvs
 USER fvs
 WORKDIR /work
@@ -109,6 +112,7 @@ FROM fvs-r-base AS webgui
 RUN R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
+COPY scripts/smoke_test.R /opt/fvs/smoke_test.R  # baked: run with no bind mount
 RUN useradd -m fvs
 USER fvs
 WORKDIR /work
