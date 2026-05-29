@@ -1,0 +1,81 @@
+name: Publish images (GHCR)
+
+# The repo has been renamed (fors591 -> fvs-containers) and REGISTRY_IMAGE below
+# is set, so this workflow is READY but still intentionally INERT: only the manual
+# `workflow_dispatch` trigger is active (the automatic `push` block below is
+# commented out). Nothing publishes on a push until you flip it on.
+#
+# To turn on automatic publishing (the last step of the GHCR rollout):
+#   Uncomment the `push:` trigger block below, then push to main (or push a v*
+#   tag). Images land at:
+#        ghcr.io/RoopsyDaisy/fvs-containers-webgui:<variant>
+#        ghcr.io/RoopsyDaisy/fvs-containers-engine:<variant>
+#   and become `apptainer pull docker://ghcr.io/...`-able for Hellgate.
+# You can also trigger a one-off publish now via the Actions tab ("Run workflow")
+# without enabling the push trigger.
+
+on:
+  workflow_dispatch:        # manual only for now — safe; never fires on a push
+  # push:
+  #   branches: [main]
+  #   tags: ['v*']
+  #   paths-ignore:         # mirror ci.yaml — never publish on a docs-only push
+  #     - '**.md'
+  #     - 'docs/**'
+  #     - 'LICENSE'
+
+permissions:
+  contents: read
+  packages: write           # required to push to GHCR
+
+env:
+  # Shared GHCR package prefix; the build appends -webgui / -engine. Lowercase
+  # (GHCR requires it). Update this if the repo is ever renamed again.
+  REGISTRY_IMAGE: ghcr.io/roopsydaisy/fvs-containers
+  FVS_VARIANT: ie
+  FVS_BASE: source
+
+jobs:
+  publish:
+    name: Build + push webgui and engine images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard — refuse to publish to the placeholder namespace
+        run: |
+          case "${REGISTRY_IMAGE}" in
+            *REPLACE_ON_RENAME*)
+              echo "::error::REGISTRY_IMAGE is still the placeholder. Set it to the post-rename ghcr.io/<owner>/<new-repo> before publishing." ;
+              exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive   # vendor/fvs (+NVEL), fvs-build, fvs-interface
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + smoke test images
+        run: bash scripts/build_images.sh
+        env:
+          ENGINE: docker
+          FVS_VARIANT: ${{ env.FVS_VARIANT }}
+          FVS_BASE: ${{ env.FVS_BASE }}
+
+      - name: Tag + push to GHCR
+        run: |
+          set -euo pipefail
+          # build_images.sh tags local images fvs-webgui:<variant> / fvs-engine:<variant>.
+          for img in webgui engine; do
+            local_tag="fvs-${img}:${FVS_VARIANT}"
+            remote="${REGISTRY_IMAGE}-${img}"
+            docker tag "${local_tag}" "${remote}:${FVS_VARIANT}"
+            docker tag "${local_tag}" "${remote}:latest"
+            docker push "${remote}:${FVS_VARIANT}"
+            docker push "${remote}:latest"
+            echo ">>> pushed ${remote}:{${FVS_VARIANT},latest}"
+          done

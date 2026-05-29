@@ -216,28 +216,74 @@ Two distinct ways to do conditional "logic between years":
    (`src/fvs_tools/` + `tests/` + `pyproject.toml`/`uv.lock`), analysis notebooks,
    exploratory course docs/scripts, and stale build leftovers (`lib/`), leaving a
    lean R-only repo. Recoverable in git history.
-6. **CI is live & green:** pushed `fvs-container-build` to `github.com/RoopsyDaisy/fors591`;
-   the GitHub Actions `images` job builds both images + runs the in-image smoke
-   test on every push to `main`/`fvs-container-build` (passed in ~2:44).
-7. **Remaining smaller items:** add `scripts/r_workflow/generate_sweep.R` (R
-   parameter-sweep / Monte Carlo helper) and a documentation pass (per-use-path
-   quickstarts).
-8. **Publish images to GHCR — planned, deferred to ~week of 2026-06-01.** Add a
-   CI publish step (`packages: write` + `docker/login-action` + push on
-   `main`/tags) so the images are pullable (`apptainer pull docker://ghcr.io/...`
-   — the clean Hellgate path). **Intentionally deferred until after a planned repo
-   move/rename** off the course-tied `fors591` name to a neutral name (e.g.
-   `fvs-containers`), so the GHCR namespace is set once. A move touches: the GHCR
-   namespace, the `ci.yaml` branch triggers, and a few repo-name references in
-   docs; submodules + history move cleanly via push/rename.
+6. **CI is live & green:** pushed `fvs-container-build` to `github.com/RoopsyDaisy/fvs-containers`
+   (renamed from `fors591`, see item 8); the GitHub Actions `images` job builds
+   both images + runs the in-image smoke test on every push to
+   `main`/`fvs-container-build` (passed in ~2:44).
+7. **Remaining smaller items — mostly DONE.**
+   - `scripts/r_workflow/generate_sweep.R` (R parameter-sweep / Monte Carlo
+     helper) — **BUILT + verified end-to-end locally**: expands a
+     `(stand × treatment)` grid (`expand.grid`, optional `SWEEP_SAMPLE` random
+     subsampling), injects a `ThinBBA` residual-BA thinning via
+     `fvsMakeKeyFile(moreKeywords=)`, unique base name per cell → own run dir +
+     `FVSOut.db`, and writes `sweep_manifest.csv` (run_id → params). Tested:
+     baseline + 60/120 ft² thinnings on CARB_2/CARB_3 → 0-failure batch; thinnings
+     fire (BA drops to the residual in the thin year), and a residual target above
+     standing BA correctly no-ops. To sweep a different treatment, edit
+     `treat_record()`. (`scripts/r_workflow/README.md` documents the track + the
+     RSQLite aggregation join + the FVS pre/post-thin double-summary-row gotcha.)
+   - Docs pass (per-use-path quickstarts) — sweep quickstart + aggregation added.
+   - **CI `paths:` filter — DONE.** `ci.yaml` now has `paths-ignore`
+     (`**.md`, `docs/**`, `LICENSE`) on both `push` and `pull_request`, so
+     docs-only pushes skip the ~3-min image rebuild. (This unblocks pushing the
+     stranded doc commits without triggering a build.)
+8. **Repo renamed `fors591` → `fvs-containers`; GHCR publish READY (auto-publish
+   not yet enabled).** The GitHub repo was renamed in place (history + submodules
+   carried over via the redirect; the old URL still resolves). In-tree refs
+   updated: `.devcontainer/devcontainer.json` `"name"` → `fvs-containers`, and a
+   ready publish workflow at `.github/workflows/publish.yaml` (`packages: write` +
+   `docker/login-action`, builds via `scripts/build_images.sh`, tags + pushes
+   `…-webgui` / `…-engine`) with `REGISTRY_IMAGE=ghcr.io/roopsydaisy/fvs-containers`
+   (GHCR requires lowercase). The workflow is **ready but intentionally inert**:
+   only `workflow_dispatch` is active (the auto `push` trigger is commented out),
+   so nothing publishes on a push yet.
+
+   **To finish the GHCR rollout** (the one remaining step): uncomment the `push:`
+   trigger in `publish.yaml` (or use the Actions tab "Run workflow" for a one-off).
+   Then images are pullable
+   (`apptainer pull docker://ghcr.io/roopsydaisy/fvs-containers-engine:ie` — the
+   clean Hellgate path).
+
+   **Deliberately left alone / still open:**
+   - **`fors591-claude` Docker volume — kept as-is on purpose.** It holds Claude's
+     persistent memory + chat history (mounted at `~/.claude`). Renaming it would
+     orphan that data, so the name stays (it's cosmetic; an inline note in
+     `devcontainer.json` records why). A host-side backup lives in
+     `.claude-backup/` (gitignored). `git pull` and devcontainer rebuilds are
+     safe — they don't touch named volumes. The only trap: renaming the **local
+     clone folder** changes the workspace path and thus the memory's project key
+     (`projects/-workspaces-fors591/`) — keep the local folder name, or migrate
+     that subdir if you rename it.
+   - `Dockerfile:58` `WORKDIR /workspaces/fors591` — left unchanged: it pairs with
+     the *local folder* name (the mount path), which the GitHub rename doesn't
+     change. Update it only if/when the local clone folder is renamed too.
+   - **Unrelated cleanup spotted during the inventory:** `.vscode/mcp.json:43`
+     points an MCP server at `outputs/assignment5/harv1/FVSOut.db` — a path under
+     the **pruned** assignment5 work that no longer exists. Stale regardless of the
+     rename; remove or repoint that MCP entry.
 
 ## How to resume in a fresh session
 
-**Current state (2026-05-29):** lean R-only repo; both deliverable images build +
-pass the in-image smoke test on `FVS_BASE=source` and `ghcr`; CI is green on
-GitHub. Branch `fvs-container-build` is **1 commit ahead of `origin`** (the
-unpushed doc commit `0626940` — docs-only, intentionally not pushed to avoid a
-CI image rebuild; push it when convenient).
+**Current state:** lean R-only repo; both deliverable images build + pass the
+in-image smoke test on `FVS_BASE=source` and `ghcr`; CI is green on GitHub. The
+smaller roadmap items are now done: the R sweep helper
+(`generate_sweep.R`, verified end-to-end), the docs pass, and a CI `paths-ignore`
+filter (so docs-only pushes skip the image rebuild). The GHCR publish workflow is
+drafted but inert (`.github/workflows/publish.yaml`) pending the rename. The main
+remaining piece is the **repo rename** (checklist in roadmap item 8 above), then
+flip `publish.yaml` on. Branch `fvs-container-build` was ahead of `origin` by the
+docs commits plus this pass's work — now that the `paths-ignore` filter is in,
+pushing the docs/sweep changes no longer triggers a needless image rebuild.
 
 1. Read this file first, then `docs/HELLGATE_FVS.md`, `cluster/README.md`,
    `scripts/r_workflow/README.md`, and `README.md`. `git log --oneline` on
@@ -250,14 +296,15 @@ CI image rebuild; push it when convenient).
    - WebGUI: `bash scripts/run_webgui.sh` (port 3838).
    - Image builds need a container runtime (NOT in the devcontainer) — run
      `ENGINE=podman bash scripts/build_images.sh` on the lab PC, or let CI do it.
+   - R sweep track: `Rscript scripts/r_workflow/build_input_db.R outputs/r_sweep/FVS_Data.db CARB_2,CARB_3`
+     then `SWEEP_RESID_BA="none,60,120" Rscript scripts/r_workflow/generate_sweep.R outputs/r_sweep CARB_2,CARB_3 55`
+     then `FVS_BIN=.devcontainer/fvs-bin VARIANT=ie FVS_INPUT="$PWD/outputs/r_sweep/FVS_Data.db" cluster/run_local.sh outputs/r_sweep/keyfiles.txt outputs/r_sweep_runs`.
 3. **Next actions (all in the roadmap above; none blocking):**
-   - **Planned ~week of 2026-06-01:** rename/move the repo off the course name
-     `fors591`, then add the CI GHCR-publish step (so images are `apptainer
-     pull`-able for Hellgate). Sequence the rename *before* GHCR so the namespace
-     is set once.
-   - Smaller: `scripts/r_workflow/generate_sweep.R` (R sweep/MC helper), a docs
-     polish (per-use-path quickstarts), and a CI `paths:` filter so docs-only
-     pushes don't trigger image rebuilds.
+   - **The rename, then GHCR publish:** rename the repo off the course name
+     `fors591` (checklist in roadmap item 8), then set `REGISTRY_IMAGE` +
+     uncomment the `push:` trigger in `.github/workflows/publish.yaml` so images
+     are `apptainer pull`-able for Hellgate. Sequence the rename *before* enabling
+     publish so the GHCR namespace is set once.
    - **Parked on access:** Hellgate validation — see the "[confirm on cluster]"
      list in `docs/HELLGATE_FVS.md`; the lecturer has a (possibly-stale) Hellgate
      ID and is prepping `stand.key` examples for a lab visit to run the batch.

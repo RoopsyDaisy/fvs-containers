@@ -1,5 +1,5 @@
 {
-  "name": "fors591-fvs",
+  "name": "fvs-containers",
   "build": {
     "dockerfile": "../Dockerfile",
     "context": ".."
@@ -9,7 +9,10 @@
   "runArgs": ["--userns=keep-id"],
   "remoteUser": "vscode",
   // Persist Claude Code state (conversation history, memory) in a named volume so
-  // chats survive container rebuilds during development.
+  // chats survive container rebuilds during development. NOTE: the volume name is
+  // deliberately kept as the legacy `fors591-claude` (not renamed to match the
+  // repo) -- renaming it would start a fresh empty volume and orphan the existing
+  // memory. Leave it, or migrate the data first (see docs/PROJECT_STATUS.md).
   "mounts": [
     "source=fors591-claude,target=/home/vscode/.claude,type=volume"
   ],

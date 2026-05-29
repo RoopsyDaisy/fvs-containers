@@ -63,6 +63,10 @@ docs/ReportImages/
 # Locally built FVS binaries (compiled from vendor/fvs by the devcontainer)
 .devcontainer/fvs-bin/
 
+# Host-side backup of the Claude state volume (memory + chat transcripts).
+# Kept local as insurance; never commit chat history.
+.claude-backup/
+
 # OS
 .DS_Store
 Thumbs.db
