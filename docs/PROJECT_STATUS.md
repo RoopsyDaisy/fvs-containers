@@ -303,7 +303,7 @@ pushing the docs/sweep changes no longer triggers a needless image rebuild.
 
 1. Read this file first, then `docs/HELLGATE_FVS.md`, `cluster/README.md`,
    `scripts/r_workflow/README.md`, and `README.md`. `git log --oneline` on
-   `fvs-container-build` for the change history.
+   `main` for the change history (the old `fvs-container-build` dev branch is gone).
 2. Local sanity checks (devcontainer):
    - `Rscript scripts/smoke_test.R` → 5 guards incl. `rFVS/fvsLoad` + `RV:` stamp.
    - R batch track: `Rscript scripts/r_workflow/build_input_db.R outputs/r_batch/FVS_Data.db CARB_2,CARB_3,CARB_4`
