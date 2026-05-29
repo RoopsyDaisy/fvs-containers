@@ -48,34 +48,36 @@
   # with non-zero stand metrics, not merely exited 0 (it returns 0 even on
   # per-stand errors). iet01.key sends its summary to the .sum text file via
   # ECHOSUM (it does not request DB output -- FVSOut.db holds only admin tables),
-  # so we parse the .sum. Format-tolerant by design: a "cycle row" is any line
-  # whose first token is a 4-digit projection year (1990..2100) followed by
-  # several numeric fields; we require >= 2 such rows (multiple cycles) and at
-  # least one large positive metric (TPA/BA are tens-hundreds). No fixed columns,
-  # so it survives FVS layout/version changes.
+  # so we parse the .sum. Each data row is one projection cycle:
+  #   <4-digit year> <age> <TPA> <BA> ... (~24 numeric fields); case headers
+  #   start with -999 and are skipped. Format-tolerant: we match by the
+  #   leading-year shape and read TPA/BA positionally, so it survives column
+  #   drift across FVS versions. iet01 projects S248112 over 11 cycles
+  #   (1990..2090), so we require several cycles with TPA>0 and BA>0.
   sumf <- list.files(run, pattern = "\\.sum$", full.names = TRUE)
-  cycle_metrics <- function(line) {
+  cycle_row <- function(line) {                       # numeric fields, or NULL if not a cycle row
     toks <- strsplit(trimws(line), "\\s+")[[1]]
-    if (length(toks) < 6) return(numeric(0))
-    if (!grepl("^(19|20)[0-9]{2}$", toks[1])) return(numeric(0))
-    nums <- suppressWarnings(as.numeric(toks[-1]))
-    nums[!is.na(nums)]
+    if (length(toks) < 6 || !grepl("^(19|20)[0-9]{2}$", toks[1])) return(NULL)
+    suppressWarnings(as.numeric(toks))                # [1]=year [2]=age [3]=TPA [4]=BA ...
   }
   check("fvs/iet01-projection", {
     if (!length(sumf)) FALSE else {
-      rows <- Filter(length, lapply(readLines(sumf[1], warn = FALSE), cycle_metrics))
-      length(rows) >= 2 && any(vapply(rows, function(v) any(v > 1), logical(1)))
+      rows <- Filter(Negate(is.null),
+                     lapply(readLines(sumf[1], warn = FALSE), cycle_row))
+      yrs <- vapply(rows, `[`, numeric(1), 1L)
+      tpa <- vapply(rows, `[`, numeric(1), 3L)
+      ba  <- vapply(rows, `[`, numeric(1), 4L)
+      # >= 3 distinct projection cycles, and most carry positive stand metrics.
+      # "most" (not all): the keyfile includes a shelterwood prescription that
+      # can drive a cycle's stand very low -- a degenerate "ran but computed
+      # nothing" run instead yields no rows or all-zeros, which this still fails.
+      length(rows) >= 3 && length(unique(yrs)) >= 3 &&
+        mean(tpa > 0, na.rm = TRUE) > 0.5 && mean(ba > 0, na.rm = TRUE) > 0.5
     }
   })
 
-  # --- diagnostics (temporary, calibration): output files + .sum head, so the
-  # .sum parse above can be eyeballed against FVS's real format. Never fails. ---
-  cat("  --- iet01 run: exit =", st, "; output files ---\n")
-  for (f in list.files(run, full.names = TRUE))
-    cat(sprintf("      %9.0f  %s\n", file.info(f)$size, basename(f)))
-  if (length(sumf)) {
-    cat("  --- iet01.sum (first 20 lines) ---\n")
-    for (ln in utils::head(readLines(sumf[1], warn = FALSE), 20L))
-      cat("      |", ln, "\n")
-  }
+  # one-line provenance in the log (engine version + run id come from .sum row 1)
+  cat(sprintf("  iet01: exit=%s, %d output files, .sum=%s bytes\n",
+              st, length(list.files(run)),
+              if (length(sumf)) file.info(sumf[1])$size else 0))
 })()

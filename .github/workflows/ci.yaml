@@ -43,13 +43,3 @@ jobs:
           ENGINE: docker
           FVS_VARIANT: ie
           FVS_BASE: source
-
-      # TEMP (integration-test calibration): re-run the R suite in the already-built
-      # engine image and print its output (incl. the iet01 FVS diagnostics) straight
-      # to THIS step's log. It's a tiny step, so its log renders in full -- just
-      # expand "FVS test output" and read it (the giant build step above truncates).
-      # Non-gating (build_images.sh is the real gate). Remove once the iet01
-      # correctness assertions are finalized.
-      - name: FVS test output (calibration)
-        if: always()
-        run: docker run --rm fvs-engine:ie Rscript /opt/fvs/tests/run_tests.R || true

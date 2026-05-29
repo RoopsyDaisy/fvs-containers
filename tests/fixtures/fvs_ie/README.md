@@ -13,7 +13,12 @@ vendored here so the test suite is self-contained (the submodule isn't always
 checked out, and isn't present in the deliverable images).
 
 Used by `tests/integration/test_fvs_iet01.R`, which runs the engine on it and
-asserts a clean run with non-empty output. It is **not** a `data/` inventory
-fixture (the database track's `FVS_StandInit`/`FVS_TreeInit` CSVs are still
-unshipped — see `data/README.md`); it exercises the engine + the keyword-file
-invocation, not `build_input_db.R`.
+asserts a clean run **and a real multi-cycle projection** — it parses the `.sum`
+output and requires several distinct projection cycles carrying positive stand
+metrics (TPA/BA), so a degenerate "exited 0 but computed nothing" run fails.
+(iet01 sends its summary to the `.sum` text file via `ECHOSUM`; it does not
+request DB output, so `FVSOut.db` holds only admin tables.)
+
+It is **not** a `data/` inventory fixture (the database track's
+`FVS_StandInit`/`FVS_TreeInit` CSVs are still unshipped — see `data/README.md`);
+it exercises the engine + the keyword-file invocation, not `build_input_db.R`.
