@@ -20,11 +20,10 @@ get_script_dir <- function() {
   if (length(f)) dirname(normalizePath(f)) else getwd()
 }
 repo_root <- normalizePath(file.path(get_script_dir(), "..", ".."))
+source(file.path(get_script_dir(), "data_paths.R"))
 
-stand_csv <- file.path(repo_root, "data", "FVS_Lubrecht_2023_FVS_StandInit.csv")
-tree_csv  <- file.path(repo_root, "data", "FVS_Lubrecht_2023_FVS_FVS_TreeInit.csv")
-stands <- read.csv(stand_csv, fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
-trees  <- read.csv(tree_csv,  fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
+stands <- read_input_csv(repo_root, INPUT_STAND_CSV)
+trees  <- read_input_csv(repo_root, INPUT_TREE_CSV)
 
 args <- commandArgs(trailingOnly = TRUE)
 out_db    <- if (length(args) >= 1 && nzchar(args[1])) args[1] else
