@@ -1,28 +1,26 @@
 name: Publish images (GHCR)
 
-# The repo has been renamed (fors591 -> fvs-containers) and REGISTRY_IMAGE below
-# is set, so this workflow is READY but still intentionally INERT: only the manual
-# `workflow_dispatch` trigger is active (the automatic `push` block below is
-# commented out). Nothing publishes on a push until you flip it on.
+# Build the deliverable images and publish them to GHCR. Runs on pushes to main
+# and on v* tags (and manual dispatch). Each run overwrites the moving `:ie` and
+# `:latest` tags on the two packages -- it does NOT create a new package per push;
+# the previous image digest just becomes untagged. Images land at:
+#        ghcr.io/roopsydaisy/fvs-containers-webgui:{ie,latest}
+#        ghcr.io/roopsydaisy/fvs-containers-engine:{ie,latest}
+# and become `apptainer pull docker://ghcr.io/...`-able for Hellgate.
 #
-# To turn on automatic publishing (the last step of the GHCR rollout):
-#   Uncomment the `push:` trigger block below, then push to main (or push a v*
-#   tag). Images land at:
-#        ghcr.io/RoopsyDaisy/fvs-containers-webgui:<variant>
-#        ghcr.io/RoopsyDaisy/fvs-containers-engine:<variant>
-#   and become `apptainer pull docker://ghcr.io/...`-able for Hellgate.
-# You can also trigger a one-off publish now via the Actions tab ("Run workflow")
-# without enabling the push trigger.
+# NOTE: GHCR also runs ci.yaml on main pushes (build + smoke, no publish). The two
+# overlap on main; that's intentional belt-and-suspenders for now -- collapse them
+# if the duplicate build time matters.
 
 on:
-  workflow_dispatch:        # manual only for now — safe; never fires on a push
-  # push:
-  #   branches: [main]
-  #   tags: ['v*']
-  #   paths-ignore:         # mirror ci.yaml — never publish on a docs-only push
-  #     - '**.md'
-  #     - 'docs/**'
-  #     - 'LICENSE'
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:           # mirror ci.yaml — never publish on a docs-only push
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  workflow_dispatch:        # allow a manual one-off publish from the Actions tab
 
 permissions:
   contents: read
