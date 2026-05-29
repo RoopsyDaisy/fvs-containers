@@ -24,19 +24,37 @@
   st <- suppressWarnings(system2(exe, "--keywordfile=iet01.key",
                                  stdout = "iet01.console", stderr = "iet01.console"))
 
+  # the main text output (.out preferred, else .sum / console), as one vector
+  outfiles <- list.files(run, pattern = "\\.(out|sum)$", full.names = TRUE)
+  outtxt   <- unlist(lapply(outfiles, readLines, warn = FALSE))
+
   # FVS STOP codes 0/10/20 are all non-fatal completions (see docs/HELLGATE_FVS.md).
   check("fvs/iet01-exit", isTRUE(st %in% c(0L, 10L, 20L)))
 
   # it must produce a non-empty main output file (.out or run summary .sum)
-  check("fvs/iet01-output", {
-    out <- list.files(run, pattern = "\\.(out|sum)$", full.names = TRUE)
-    length(out) >= 1 && any(file.info(out)$size > 0)
-  })
+  check("fvs/iet01-output",
+        length(outfiles) >= 1 && any(file.info(outfiles)$size > 0))
 
   # and the run must not report a FATAL error in the main output
-  check("fvs/iet01-no-fatal", {
-    f <- list.files(run, pattern = "\\.out$", full.names = TRUE)
-    length(f) == 0 ||
-      !any(grepl("FATAL", readLines(f[1], warn = FALSE), ignore.case = TRUE))
-  })
+  check("fvs/iet01-no-fatal",
+        !any(grepl("FATAL", outtxt, ignore.case = TRUE)))
+
+  # FVS actually ingested our keyword file (the stand id is echoed in the run
+  # header) -- guards against a boilerplate-only / empty run passing the checks
+  # above. S248112 is the iet01 stand id (see tests/fixtures/fvs_ie/iet01.key).
+  check("fvs/iet01-read-stand", any(grepl("S248112", outtxt, fixed = TRUE)))
+
+  # --- diagnostics: print FVS's real output format so the "real projection
+  # happened" assertions (non-zero summary metrics, expected cycles) can be
+  # calibrated to it next, instead of guessed. Always prints; never fails. ---
+  cat("  --- iet01 run: exit =", st, "; output files ---\n")
+  for (f in list.files(run, full.names = TRUE))
+    cat(sprintf("      %9.0f  %s\n", file.info(f)$size, basename(f)))
+  hits <- grep("SUMMARY|STATISTICS|TREES|RECORDS|ERROR|WARNING|STAND ",
+               outtxt, ignore.case = TRUE)
+  if (length(hits)) {
+    ctx  <- sort(unique(unlist(lapply(hits, function(i) i:min(i + 1L, length(outtxt))))))
+    cat("  --- iet01 output: lines of interest (first 60) ---\n")
+    for (i in utils::head(ctx, 60L)) cat("      |", outtxt[i], "\n")
+  }
 })()
