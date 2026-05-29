@@ -9,7 +9,7 @@ and ships it three ways:
 | You want to… | Use | Audience |
 |---|---|---|
 | Click through FVS in a browser | **WebGUI image** | foresters, students, on a laptop |
-| Run keyword files from the command line | **slim engine image** | scripted / reproducible runs |
+| Run keyword files from the command line | **engine image** | scripted / reproducible runs |
 | Run thousands of simulations | **Apptainer + SLURM** | researchers on the Hellgate cluster |
 
 FVS is built from the [`vendor/fvs`](vendor/fvs) submodule (pinned to a tagged
@@ -21,6 +21,30 @@ undocumented Linux gotchas it handles are written up in [docs/BUILD.md](docs/BUI
 > git clone --recurse-submodules <this-repo>
 > # or in an existing checkout: git submodule update --init --recursive
 > ```
+
+## What this adds over the prebuilt FVS image
+
+A prebuilt FVS image (e.g. `ghcr.io/vibrant-planet-open-science/usfs-fvs`) gives
+you the FVS **engine** — the variant binaries — and nothing else. It can run a
+keyword file you hand it. This repo turns that engine into a usable toolchain:
+
+- **A point-and-click WebGUI** — FVSOnline (`fvsOL`) + R/Shiny layered on the
+  engine, with the full R dependency set pinned (`renv` + a dated snapshot) for
+  reproducibility. The base image has none of this.
+- **Run-at-scale on HPC** — an Apptainer + SLURM batch runner for many keyword
+  files, plus an **R-enabled** engine image so keyword generation and rFVS-driven
+  runs work *on the cluster*, not just the bare CLI.
+- **R workflows** — generate keyword files from inventory data
+  (`rFVS::fvsMakeKeyFile`) and drive FVS cycle-by-cycle from R (`fvsInteractRun`).
+  See [scripts/r_workflow/](scripts/r_workflow/).
+- **A reproducible, patchable build** — rebuild the *same* engine + R stack from
+  pinned source (or base off the prebuilt image via a build flag), rather than
+  depending on an opaque artifact.
+
+We add nothing to FVS itself — the value is entirely this usability, scale, and
+reproducibility layer. If you only need to run one keyword file by hand, the
+prebuilt image is enough; the moment you want the GUI, HPC batch, R-driven config,
+or a reproducible build, that's the gap this repo fills.
 
 ## The WebGUI (foresters)
 
