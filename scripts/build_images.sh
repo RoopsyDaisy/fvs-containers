@@ -17,6 +17,7 @@
 #   TARGETS      space-separated targets to build         (default "webgui cluster")
 #   TAG_PREFIX   image name prefix                        (default fvs)
 #   SMOKE        1 (default) run smoke_test.R in each built image, 0 to skip
+#   TESTS        1 (default) run tests/run_tests.R in each built image, 0 to skip
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -56,6 +57,18 @@ if [ "$SMOKE" = "1" ]; then
     tag="$(img_for "$t")"
     echo ">>> smoke test in $tag"
     "$ENGINE" run --rm "$tag" Rscript /opt/fvs/smoke_test.R
+  done
+fi
+
+# R test suite inside each built image: pure-R unit tests (data-path guard +
+# keyword writer) plus the engine integration test (runs FVS on the upstream
+# iet01 'ie' example). Baked at /opt/fvs/tests, so no bind mount needed. Gating
+# here means publish.yaml won't push an image whose engine/workflows regress.
+if [ "${TESTS:-1}" = "1" ]; then
+  for t in $TARGETS; do
+    tag="$(img_for "$t")"
+    echo ">>> R test suite in $tag"
+    "$ENGINE" run --rm "$tag" Rscript /opt/fvs/tests/run_tests.R
   done
 fi
 
