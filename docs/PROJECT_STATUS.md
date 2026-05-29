@@ -43,10 +43,14 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
   `rFVS::fvsMakeKeyFile` + a manifest → the `cluster/` batch) and an interactive
   track (`project_stand.R`, rFVS `fvsInteractRun`, in-memory harvest). 296 stands
   → DB → keyfiles → 0-failure batch → populated `FVSOut.db`.
-- **Python tooling is a real uv project** (`pyproject.toml` rewritten from a stray
-  ML template to fvs_tools' actual deps + `uv.lock`); `uv run pytest` green
-  (103 passed). Gives the Python side the same frozen-lock reproducibility renv
-  gives R.
+- **Pruned to lean R-only** (2026-05-29): removed the Python `src/fvs_tools/`
+  (incl. `monte_carlo/`), its `tests/` + `pyproject.toml`/`uv.lock`, the analysis
+  notebooks, and exploratory course docs/scripts + stale build leftovers. The
+  chosen forester path is the R workflows; structured parameter sweeps / Monte
+  Carlo will be a small future `scripts/r_workflow/generate_sweep.R` (`expand.grid`
+  / sampling → `fvsMakeKeyFile(moreKeywords=)` → the `cluster/` batch → aggregate
+  `FVSOut.db` via RSQLite). The pruned Python work remains recoverable in git
+  history. (CI dropped its `python` job accordingly.)
 - **Smoke test stamps the FVS engine version** (parses the `RV:` banner) and is
   cross-image (fvsOL guards self-skip where fvsOL is absent, e.g. the cluster
   image), so one gate works in both deliverable images.
@@ -80,7 +84,6 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
 | Dev image / setup | `Dockerfile` (devcontainer; dev sibling of the common base), `.devcontainer/devcontainer.json`, `.devcontainer/postCreate.sh` |
 | Deliverable images | `docker/Dockerfile` (one multi-target file: `fvs-r-base` → `webgui`, `cluster`) |
 | Image build / CI | `scripts/build_images.sh` (portable docker/podman build + in-image smoke test), `.github/workflows/ci.yaml` |
-| Python tooling | `pyproject.toml` + `uv.lock` (uv project for `src/fvs_tools`), `tests/` |
 | R env pin | `renv.lock`, `.Rprofile`, `renv/` |
 | fvsOL/rFVS patches | `patches/*.patch` + `scripts/apply_fvsol_patch.sh` |
 | FVS build | `scripts/build_fvs.sh` (wraps `vendor/fvs-build` Meson overlay) |
@@ -191,8 +194,9 @@ Two distinct ways to do conditional "logic between years":
    existing `cluster/` batch. Verified end-to-end locally (296 stands → DB →
    keyfiles → 0-failure batch → populated `FVSOut.db`). To sweep Event-Monitor
    thresholds/treatments (the Monte Carlo pattern) pass extra records via
-   `fvsMakeKeyFile(moreKeywords=...)`; further building blocks in the Python
-   `src/fvs_tools/monte_carlo/` and microfvs's KCP library.
+   `fvsMakeKeyFile(moreKeywords=...)` — to be packaged as a small
+   `generate_sweep.R` (deferred; see below). microfvs's KCP library is a source of
+   ready treatment keyword blocks.
 2. **rFVS interactive (Path 2) — single-stand BUILT.** `scripts/r_workflow/project_stand.R`
    drives FVS as a library via `fvsLoad` + `fvsInteractRun`, harvesting per-cycle
    tree lists + summary into R in-memory (verified on CARB_2). A *parallel* rFVS
@@ -207,8 +211,13 @@ Two distinct ways to do conditional "logic between years":
 4. **Hellgate validation (needs cluster access).** See the "[confirm on
    cluster]" list in `docs/HELLGATE_FVS.md`: partitions/limits, login-node
    network egress, fakeroot, modules, BeeGFS paths, real `.sif` under Apptainer.
-5. **Prune for final product.** Strip data artifacts and exploratory/course
-   files (Monte Carlo notebooks etc. are kept for now as workflow reference).
+5. **Prune for final product — DONE (2026-05-29).** Removed the Python tooling
+   (`src/fvs_tools/` + `tests/` + `pyproject.toml`/`uv.lock`), analysis notebooks,
+   exploratory course docs/scripts, and stale build leftovers (`lib/`), leaving a
+   lean R-only repo. Recoverable in git history.
+6. **Remaining smaller items:** add `scripts/r_workflow/generate_sweep.R` (R
+   parameter-sweep / Monte Carlo helper), a documentation pass (top-level README +
+   per-use-path guides), and push to trigger/validate the GitHub Actions run.
 
 ## How to resume in a fresh session
 

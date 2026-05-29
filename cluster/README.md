@@ -1,6 +1,7 @@
 # Running FVS at scale on an HPC cluster (Hellgate)
 
-This directory packages the slim FVS engine image ([docker/Dockerfile.fvs](../docker/Dockerfile.fvs))
+This directory packages the FVS engine image (the `cluster` target of
+[docker/Dockerfile](../docker/Dockerfile) — FVS + R + rFVS)
 for batch use on an Apptainer + SLURM cluster such as the University of Montana's
 **Hellgate** Research cluster. For interactive single-stand exploration use the
 WebGUI instead (see the top-level run docs); the cluster path is for large
@@ -97,5 +98,6 @@ with a populated output DB and no collisions.)
 - Apptainer on Hellgate aliases `singularity`; either command works.
 - The `.sif` is variant-specific (it contains `FVSie`). Build one `.sif` per
   variant you need, or build a multi-variant image and set `VARIANT` accordingly.
-- To post-process results, the `FVSOut.db` SQLite files can be read with the
-  salvaged Python helpers in `src/fvs_tools` (see the top-level docs).
+- To post-process results, the per-run `FVSOut.db` SQLite files can be read in R
+  (`DBI`/`RSQLite`) or any SQLite client — e.g. the R workflows under
+  `scripts/r_workflow/` read them with `RSQLite`.

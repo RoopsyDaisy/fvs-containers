@@ -28,7 +28,7 @@ A familiar point-and-click FVSOnline interface, with no local R, FVS, or Fortran
 install required.
 
 ```bash
-podman build -f docker/Dockerfile.webgui -t fvs-webgui:ie --build-arg FVS_VARIANT=ie .
+podman build -f docker/Dockerfile --target webgui -t fvs-webgui:ie --build-arg FVS_VARIANT=ie .
 podman run --rm -p 3838:3838 -v "$PWD/myproject:/work" fvs-webgui:ie
 # then open http://localhost:3838
 ```
@@ -39,8 +39,8 @@ port 3838 is forwarded to the Mac, so you just open the URL in your browser.
 ## The command line (scripted runs)
 
 ```bash
-podman build -f docker/Dockerfile.fvs -t fvs:ie --build-arg FVS_VARIANT=ie .
-echo mykeys.key | podman run -i --rm -v "$PWD:/work" fvs:ie FVSie
+podman build -f docker/Dockerfile --target cluster -t fvs-engine:ie --build-arg FVS_VARIANT=ie .
+podman run --rm -v "$PWD:/work" fvs-engine:ie FVSie --keywordfile=mykeys.key
 # FVS writes FVSOut.db and report files next to your keyword file
 ```
 
@@ -70,10 +70,12 @@ scripts/build_fvs.sh vendor/fvs ie /tmp/fvs-ie   # -> FVSie + shared libs
 ```
 vendor/fvs              FVS engine source (submodule, pinned; nests volume/NVEL)
 vendor/fvs-interface    rFVS + fvsOL (WebGUI) source (submodule, pinned)
+vendor/fvs-build        Meson build overlay for compiling FVS (submodule)
+docker/Dockerfile       one multi-target build: fvs-r-base -> webgui, cluster
 scripts/build_fvs.sh    compile one FVS variant from source
-docker/Dockerfile.fvs   slim engine image
-docker/Dockerfile.webgui  FVS + R/Shiny WebGUI image
+scripts/build_images.sh build + in-image smoke test (docker/podman)
+scripts/r_workflow/      R workflows: keyword generation (batch) + rFVS interactive
+scripts/smoke_test.R    regression gate (R env + FVS engine + rFVS load)
 cluster/                Apptainer .sif build + SLURM array template
 docs/BUILD.md           how the build works (and the upstream gaps it fills)
-src/fvs_tools/          Python helpers for keyword generation + reading FVSOut.db
 ```

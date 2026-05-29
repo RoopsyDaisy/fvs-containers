@@ -66,7 +66,7 @@ Rscript scripts/r_workflow/project_stand.R CARB_2 55
   completed-with-warnings); both are success. The runner treats exit 0/10/20 as
   success. Per-stand data/keyword problems are logged to the `FVS_Error` table in
   the output DB, not the exit code.
-- **Two keyword-file styles.** *Database-style* (what the GUI, `rFVS::fvsMakeKeyFile`,
-  and the Python `fvs_tools` produce) reads/writes via SQLite and feeds the batch.
+- **Two keyword-file styles.** *Database-style* (what the GUI and
+  `rFVS::fvsMakeKeyFile` produce) reads/writes via SQLite and feeds the batch.
   *Flat-file* (`write.FVSfiles`) pairs a `.key` with a `.tre` and suits the rFVS
   in-memory track.
