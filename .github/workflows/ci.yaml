@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, fvs-container-build]
+    # main is intentionally NOT here: publish.yaml builds + smoke-tests (then
+    # publishes) on main pushes, so running this too would just double the build.
+    # This job gates the dev branch + PRs.
+    branches: [fvs-container-build]
     # Skip the ~3-min image rebuild for docs-only pushes. paths-ignore is a
     # denylist (skip only when *every* changed file matches), so a new
     # build-relevant file can never be silently excluded -- and no build input
