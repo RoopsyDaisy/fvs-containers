@@ -1,7 +1,23 @@
 # FVS container project — status, decisions & roadmap
 
 Handoff doc so this work can be resumed in a fresh session without losing
-context. Branch: **`fvs-container-build`**.
+context.
+
+> **Current state (updated 2026-05-29).** Several items below were written while
+> work was in flight and have since landed — read this banner first, then treat
+> the rest as historical narrative:
+> - **Repo renamed** `fors591` → `fvs-containers` (done; the old dev branch
+>   `fvs-container-build` referenced throughout no longer exists — `main` is the
+>   trunk).
+> - **GHCR publish is LIVE**, not "inert": `.github/workflows/publish.yaml` builds
+>   + pushes on `main`/`v*` tags (`REGISTRY_IMAGE=ghcr.io/roopsydaisy/fvs-containers`).
+>   `ci.yaml` gates the other branches + PRs (it no longer runs on `main`).
+> - **Stale `.vscode/mcp.json` assignment5 path** (flagged in roadmap item 8):
+>   already removed.
+> - **Known open gap (H1 in `docs/ASSESSMENT.md`):** the R workflows read
+>   `data/*.csv` inventory inputs that are **not committed** (gitignored), so a
+>   fresh clone can't run them until the fixture is added — see `data/README.md`.
+> See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is
 
