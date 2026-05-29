@@ -215,9 +215,20 @@ Two distinct ways to do conditional "logic between years":
    (`src/fvs_tools/` + `tests/` + `pyproject.toml`/`uv.lock`), analysis notebooks,
    exploratory course docs/scripts, and stale build leftovers (`lib/`), leaving a
    lean R-only repo. Recoverable in git history.
-6. **Remaining smaller items:** add `scripts/r_workflow/generate_sweep.R` (R
-   parameter-sweep / Monte Carlo helper), a documentation pass (top-level README +
-   per-use-path guides), and push to trigger/validate the GitHub Actions run.
+6. **CI is live & green:** pushed `fvs-container-build` to `github.com/RoopsyDaisy/fors591`;
+   the GitHub Actions `images` job builds both images + runs the in-image smoke
+   test on every push to `main`/`fvs-container-build` (passed in ~2:44).
+7. **Remaining smaller items:** add `scripts/r_workflow/generate_sweep.R` (R
+   parameter-sweep / Monte Carlo helper) and a documentation pass (per-use-path
+   quickstarts).
+8. **Publish images to GHCR — planned, deferred to ~week of 2026-06-01.** Add a
+   CI publish step (`packages: write` + `docker/login-action` + push on
+   `main`/tags) so the images are pullable (`apptainer pull docker://ghcr.io/...`
+   — the clean Hellgate path). **Intentionally deferred until after a planned repo
+   move/rename** off the course-tied `fors591` name to a neutral name (e.g.
+   `fvs-containers`), so the GHCR namespace is set once. A move touches: the GHCR
+   namespace, the `ci.yaml` branch triggers, and a few repo-name references in
+   docs; submodules + history move cleanly via push/rename.
 
 ## How to resume in a fresh session
 
