@@ -149,8 +149,9 @@ change. To update upstream: bump the submodule SHA, re-run the build, re-test th
   staged install fails). Only surfaces on a real `renv::install`, not when
   hydrated/copied.
 - **git identity is host-delegated**: VS Code copies the host (`~/.gitconfig`)
-  into the container at creation. The Fedora host now has it set; in-container
-  commits before a rebuild used `git -c user.name=… -c user.email=…`.
+  into the container at creation. Now present in-container
+  (`RoopsyDaisy <rupertwilliamsnz@gmail.com>`), so plain `git commit` works — no
+  `git -c user.name=… -c user.email=…` needed (earlier in this repo's history it was).
 - **Run method depends on keyword-file style (verified 2026-05-28).**
   `FVSie --keywordfile=x.key` works for **all** keyword files — FVS derives the
   aux filenames (`.tre`/`.out`/`.trl`) from the keyword base name and runs
@@ -232,9 +233,31 @@ Two distinct ways to do conditional "logic between years":
 
 ## How to resume in a fresh session
 
-1. Read this file + `docs/HELLGATE_FVS.md` + `cluster/README.md`.
-2. `git log --oneline` on `fvs-container-build` for the change history.
-3. Local sanity: `Rscript scripts/smoke_test.R`; WebGUI: `bash scripts/run_webgui.sh`
-   (port 3838); HPC dry-run: build a manifest and run `cluster/run_local.sh`.
-4. Open questions are the Hellgate specifics (above) and which forester path
-   (Event Monitor vs rFVS) the target logic needs.
+**Current state (2026-05-29):** lean R-only repo; both deliverable images build +
+pass the in-image smoke test on `FVS_BASE=source` and `ghcr`; CI is green on
+GitHub. Branch `fvs-container-build` is **1 commit ahead of `origin`** (the
+unpushed doc commit `0626940` — docs-only, intentionally not pushed to avoid a
+CI image rebuild; push it when convenient).
+
+1. Read this file first, then `docs/HELLGATE_FVS.md`, `cluster/README.md`,
+   `scripts/r_workflow/README.md`, and `README.md`. `git log --oneline` on
+   `fvs-container-build` for the change history.
+2. Local sanity checks (devcontainer):
+   - `Rscript scripts/smoke_test.R` → 5 guards incl. `rFVS/fvsLoad` + `RV:` stamp.
+   - R batch track: `Rscript scripts/r_workflow/build_input_db.R outputs/r_batch/FVS_Data.db CARB_2,CARB_3,CARB_4`
+     then `Rscript scripts/r_workflow/generate_keyfiles.R outputs/r_batch CARB_2,CARB_3,CARB_4 55`
+     then `FVS_BIN=.devcontainer/fvs-bin VARIANT=ie FVS_INPUT="$PWD/outputs/r_batch/FVS_Data.db" cluster/run_local.sh outputs/r_batch/keyfiles.txt outputs/r_runs`.
+   - WebGUI: `bash scripts/run_webgui.sh` (port 3838).
+   - Image builds need a container runtime (NOT in the devcontainer) — run
+     `ENGINE=podman bash scripts/build_images.sh` on the lab PC, or let CI do it.
+3. **Next actions (all in the roadmap above; none blocking):**
+   - **Planned ~week of 2026-06-01:** rename/move the repo off the course name
+     `fors591`, then add the CI GHCR-publish step (so images are `apptainer
+     pull`-able for Hellgate). Sequence the rename *before* GHCR so the namespace
+     is set once.
+   - Smaller: `scripts/r_workflow/generate_sweep.R` (R sweep/MC helper), a docs
+     polish (per-use-path quickstarts), and a CI `paths:` filter so docs-only
+     pushes don't trigger image rebuilds.
+   - **Parked on access:** Hellgate validation — see the "[confirm on cluster]"
+     list in `docs/HELLGATE_FVS.md`; the lecturer has a (possibly-stale) Hellgate
+     ID and is prepping `stand.key` examples for a lab visit to run the batch.

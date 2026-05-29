@@ -1,9 +1,9 @@
 # R workflows for FVS
 
 R-based ways to drive the Forest Vegetation Simulator (FVS), using the **same FVS
-engine** as the WebGUI (`.devcontainer/fvs-bin` here; the slim engine image on the
-cluster). Because the engine is identical, a keyword file validated in the GUI or
-here runs the same on the HPC batch.
+engine** as the WebGUI (`.devcontainer/fvs-bin` here; the `cluster` engine image
+on Hellgate). Because the engine is identical, a keyword file validated in the GUI
+or here runs the same on the HPC batch.
 
 There are two tracks, for two different needs:
 
