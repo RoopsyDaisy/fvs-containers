@@ -43,3 +43,18 @@ jobs:
           ENGINE: docker
           FVS_VARIANT: ie
           FVS_BASE: source
+
+      # TEMP (integration-test calibration): re-run the R suite in the already-built
+      # engine image and surface its output (incl. the iet01 FVS diagnostics) on the
+      # run Summary page, so we don't have to dig it out of the huge build log.
+      # Remove once the iet01 correctness assertions are finalized. Non-gating:
+      # build_images.sh above is the real gate.
+      - name: Surface R test output (calibration)
+        if: always()
+        run: |
+          {
+            echo '### R test suite output (fvs-engine:ie)'
+            echo '```'
+            docker run --rm fvs-engine:ie Rscript /opt/fvs/tests/run_tests.R 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
