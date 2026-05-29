@@ -44,17 +44,44 @@
   # above. S248112 is the iet01 stand id (see tests/fixtures/fvs_ie/iet01.key).
   check("fvs/iet01-read-stand", any(grepl("S248112", outtxt, fixed = TRUE)))
 
-  # --- diagnostics: print FVS's real output format so the "real projection
-  # happened" assertions (non-zero summary metrics, expected cycles) can be
-  # calibrated to it next, instead of guessed. Always prints; never fails. ---
+  # The real correctness signal: FVS writes its results to an output SQLite DB
+  # (FVSOut.db). Assert it actually computed a multi-cycle projection with
+  # non-zero stand metrics -- not just that the process exited 0. Table/column
+  # names are discovered at runtime (FVS_Summary vs _Summary2; Tpa/BA casing) so
+  # we don't hard-code a schema. Skips only if RSQLite is unavailable.
+  dbf <- list.files(run, pattern = "\\.db$", full.names = TRUE)
+  if (!requireNamespace("DBI", quietly = TRUE) ||
+      !requireNamespace("RSQLite", quietly = TRUE)) {
+    skip("fvs/iet01-projection", "DBI/RSQLite not installed")
+  } else if (!length(dbf)) {
+    check("fvs/iet01-projection", FALSE)        # FVSOut.db is expected; absence is a real failure
+  } else {
+    con  <- DBI::dbConnect(RSQLite::SQLite(), dbf[1])
+    on.exit(DBI::dbDisconnect(con), add = TRUE)
+    tbls <- DBI::dbListTables(con)
+    sumt <- grep("^FVS_Summary", tbls, ignore.case = TRUE, value = TRUE)
+    check("fvs/iet01-projection", {
+      if (!length(sumt)) FALSE else {
+        d  <- DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', sumt[1]))
+        cn <- toupper(names(d))
+        col <- function(nm) { j <- which(cn == nm)
+          if (length(j)) suppressWarnings(as.numeric(d[[j[1]]])) else numeric(0) }
+        tpa <- col("TPA"); ba <- col("BA")
+        nrow(d) >= 2 && length(tpa) && length(ba) &&
+          any(tpa > 0, na.rm = TRUE) && any(ba > 0, na.rm = TRUE)
+      }
+    })
+    # diagnostic: DB schema, so any name mismatch is debuggable in the same run
+    cat("  --- FVSOut.db tables:", paste(tbls, collapse = ", "), "---\n")
+    if (length(sumt)) {
+      d <- DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', sumt[1]))
+      cat("  ---", sumt[1], "cols:", paste(names(d), collapse = ","), "\n")
+      cat("  ---", sumt[1], "rows:", nrow(d), "\n")
+    }
+  }
+
+  # --- text diagnostics (temporary, calibration): bounded dump of the .out ---
   cat("  --- iet01 run: exit =", st, "; output files ---\n")
   for (f in list.files(run, full.names = TRUE))
     cat(sprintf("      %9.0f  %s\n", file.info(f)$size, basename(f)))
-  hits <- grep("SUMMARY|STATISTICS|TREES|RECORDS|ERROR|WARNING|STAND ",
-               outtxt, ignore.case = TRUE)
-  if (length(hits)) {
-    ctx  <- sort(unique(unlist(lapply(hits, function(i) i:min(i + 1L, length(outtxt))))))
-    cat("  --- iet01 output: lines of interest (first 60) ---\n")
-    for (i in utils::head(ctx, 60L)) cat("      |", outtxt[i], "\n")
-  }
 })()
