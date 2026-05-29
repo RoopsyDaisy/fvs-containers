@@ -70,4 +70,3 @@ Only commit data you have the right to redistribute, and prefer a **small**
 sample. Validate it end-to-end against the FVS engine first (`build_input_db.R`
 → `generate_keyfiles.R` → `cluster/run_local.sh`) — a fixture with the wrong or
 missing columns is worse than none.
-</content>

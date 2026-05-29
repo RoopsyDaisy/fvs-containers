@@ -40,4 +40,3 @@
       !any(grepl("FATAL", readLines(f[1], warn = FALSE), ignore.case = TRUE))
   })
 })()
-</content>

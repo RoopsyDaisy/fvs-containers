@@ -26,4 +26,3 @@
     is.data.frame(d) && nrow(d) == 2L && all(c("STAND_ID", "V") %in% names(d))
   })
 })()
-</content>

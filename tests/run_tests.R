@@ -58,4 +58,3 @@ if (length(failed)) {
   quit(status = 1)
 }
 cat("ALL TESTS PASSED\n")
-</content>

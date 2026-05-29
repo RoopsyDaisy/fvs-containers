@@ -31,4 +31,3 @@ read_input_csv <- function(repo_root, filename) {
   read.csv(require_input_csv(repo_root, filename),
            fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
 }
-</content>

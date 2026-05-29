@@ -69,4 +69,3 @@ Portable, repo-encoded pieces (copy these):
 
 Per-repo, not encoded in files: the branch-protection ruleset above (toggle it),
 and the registry/image names in `publish.yaml`.
-</content>

@@ -205,5 +205,3 @@ the GHCR publish), plus a lightweight branch/PR/test-gate workflow
 
 > Caveat: R could not be executed in the review/build environment, so the new
 > tests and the writer fix were **validated by CI in-image, not run locally**.
-</content>
-</invoke>

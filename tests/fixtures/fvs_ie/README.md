@@ -17,4 +17,3 @@ asserts a clean run with non-empty output. It is **not** a `data/` inventory
 fixture (the database track's `FVS_StandInit`/`FVS_TreeInit` CSVs are still
 unshipped — see `data/README.md`); it exercises the engine + the keyword-file
 invocation, not `build_input_db.R`.
-</content>

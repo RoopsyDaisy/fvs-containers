@@ -49,4 +49,3 @@
   with a container runtime or in CI, not inside the devcontainer.
 - Keep doc prose in sync with the scripts — this repo's docs have drifted before
   (see `docs/ASSESSMENT.md`).
-</content>
