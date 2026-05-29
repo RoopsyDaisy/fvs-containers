@@ -9,7 +9,7 @@ There are two tracks, for two different needs:
 
 | Track | Script(s) | When | How FVS is run |
 | --- | --- | --- | --- |
-| **Batch / scale** | `build_input_db.R`, `generate_keyfiles.R` | many stands or scenarios, run in parallel | generates keyword files → the file-based batch (`cluster/`) runs them |
+| **Batch / scale** | `build_input_db.R`, `generate_keyfiles.R`, `generate_sweep.R` | many stands or scenarios, run in parallel | generates keyword files → the file-based batch (`cluster/`) runs them |
 | **Interactive / in-sim R** | `project_stand.R` | you need R logic *between* FVS cycles, or per-cycle results in R | rFVS loads FVS as a library and steps through it |
 
 Both reuse FVS's own R code rather than reinventing it: the batch generator is
@@ -38,9 +38,57 @@ FVS_BIN=.devcontainer/fvs-bin VARIANT=ie FVS_INPUT=$PWD/outputs/r_batch/FVS_Data
 ```
 
 Results land in `outputs/r_runs/<STAND_ID>/FVSOut.db` (tables `FVS_Summary2`,
-`FVS_Compute`, …). Use `STANDS=all` in step 2 to template every stand. To sweep a
-treatment or Event-Monitor threshold across runs (the Monte Carlo pattern), pass
-the extra keyword records through `fvsMakeKeyFile(moreKeywords=...)`.
+`FVS_Compute`, …). Use `STANDS=all` in step 2 to template every stand.
+
+### Track A (sweep) — parameter sweep / Monte Carlo
+
+To vary a treatment across runs (the Monte Carlo pattern), use
+`generate_sweep.R` instead of `generate_keyfiles.R` at step 2. It expands a grid
+of `(stand × treatment)` cells (`expand.grid`, optionally random-subsampled),
+injects the treatment into each keyword file via
+`fvsMakeKeyFile(moreKeywords=...)`, gives every cell a unique base name so each
+gets its own run dir + `FVSOut.db`, and writes a `sweep_manifest.csv` mapping
+`run_id → parameters`. The default treatment is a thin-from-below to a residual
+basal area (`ThinBBA`), swept over `none,60,100,140` ft²/acre.
+
+```bash
+# 1. inventory CSVs -> FVS_Data.db (same as above)
+Rscript scripts/r_workflow/build_input_db.R outputs/r_sweep/FVS_Data.db CARB_2,CARB_3,CARB_4
+
+# 2. sweep keyfiles: baseline + 3 residual-BA thinnings at year 2033, per stand
+SWEEP_RESID_BA="none,60,100,140" SWEEP_THIN_YEAR=2033 \
+  Rscript scripts/r_workflow/generate_sweep.R outputs/r_sweep CARB_2,CARB_3,CARB_4 55
+
+# 3. run the whole sweep through the same batch runner
+FVS_BIN=.devcontainer/fvs-bin VARIANT=ie FVS_INPUT=$PWD/outputs/r_sweep/FVS_Data.db \
+  cluster/run_local.sh outputs/r_sweep/keyfiles.txt outputs/r_sweep_runs
+```
+
+Env knobs: `SWEEP_RESID_BA` (comma list; `none` = un-thinned baseline),
+`SWEEP_THIN_YEAR`, `SWEEP_SAMPLE=N` (randomly sample N grid cells for a true
+Monte Carlo draw instead of the full grid), `SWEEP_SEED`. To sweep a *different*
+treatment or an Event-Monitor threshold, edit `treat_record()` in the script —
+the grid/manifest/batch plumbing is treatment-agnostic.
+
+Aggregate the per-run `FVSOut.db` files back against the manifest with RSQLite:
+
+```r
+library(RSQLite)
+man <- read.csv("outputs/r_sweep/sweep_manifest.csv", stringsAsFactors = FALSE)
+agg <- do.call(rbind, lapply(seq_len(nrow(man)), function(i) {
+  con <- dbConnect(SQLite(), file.path("outputs/r_sweep_runs", man$run_id[i], "FVSOut.db"))
+  on.exit(dbDisconnect(con))
+  s <- dbGetQuery(con, "SELECT Year, BA, Tpa, MCuFt FROM FVS_Summary2 ORDER BY Year, RowID")
+  cbind(man[i, ], s)              # joins parameters onto every summary row
+}))
+```
+
+> **Thinning-year rows.** FVS writes *two* `FVS_Summary2` rows in a treatment
+> year — pre- and post-thin (the post-thin row comes second). Aggregate on a
+> *post*-treatment year, or take the last row per `Year`, so a thinning shows up
+> as the lower residual value rather than the pre-thin one. A residual target
+> above the stand's standing BA is a no-op (you can't thin below what's there) —
+> expected, not a bug.
 
 ## Track B — interactive (R drives FVS via rFVS)
 

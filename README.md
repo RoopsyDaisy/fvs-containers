@@ -98,7 +98,7 @@ vendor/fvs-build        Meson build overlay for compiling FVS (submodule)
 docker/Dockerfile       one multi-target build: fvs-r-base -> webgui, cluster
 scripts/build_fvs.sh    compile one FVS variant from source
 scripts/build_images.sh build + in-image smoke test (docker/podman)
-scripts/r_workflow/      R workflows: keyword generation (batch) + rFVS interactive
+scripts/r_workflow/      R workflows: keyword generation (batch + sweep) + rFVS interactive
 scripts/smoke_test.R    regression gate (R env + FVS engine + rFVS load)
 cluster/                Apptainer .sif build + SLURM array template
 docs/BUILD.md           how the build works (and the upstream gaps it fills)

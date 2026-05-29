@@ -3,7 +3,19 @@ name: CI
 on:
   push:
     branches: [main, fvs-container-build]
+    # Skip the ~3-min image rebuild for docs-only pushes. paths-ignore is a
+    # denylist (skip only when *every* changed file matches), so a new
+    # build-relevant file can never be silently excluded -- and no build input
+    # is markdown, so ignoring docs is safe.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
 
 permissions:
   contents: read
