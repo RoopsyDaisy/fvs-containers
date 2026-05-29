@@ -11,8 +11,8 @@
 //
 // MEMORY - Persistent key-value storage across sessions.
 //
-// CONTEXT7 - Current library docs (rasterio, geopandas, polars, torch)
-//   fetched from source to avoid stale training data.
+// CONTEXT7 - Current library docs fetched from source (avoids stale training
+//   data); query it for R package / library docs as needed.
 //
 {
     "servers": {
@@ -30,17 +30,6 @@
             "args": [
                 "-y",
                 "@upstash/context7-mcp@latest"
-            ]
-        },
-        "sqlite": {
-            "type": "stdio",
-            "command": "uv",
-            "args": [
-                "tool",
-                "run",
-                "mcp-server-sqlite",
-                "--db-path",
-                "/workspaces/fors591/outputs/assignment5/harv1/FVSOut.db"
             ]
         }
     }

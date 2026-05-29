@@ -1,12 +1,7 @@
 {
   "recommendations": [
-    "ms-python.python",
-    "ms-python.vscode-pylance",
-    "ms-python.black-formatter",
-    "charliermarsh.ruff",
-    "ms-toolsai.jupyter",
+    "REditorSupport.r",
     "mechatroner.rainbow-csv",
-    "redhat.vscode-yaml",
-    "tamasfe.even-better-toml"
+    "redhat.vscode-yaml"
   ]
 }
