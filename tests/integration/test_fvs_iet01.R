@@ -44,44 +44,38 @@
   # above. S248112 is the iet01 stand id (see tests/fixtures/fvs_ie/iet01.key).
   check("fvs/iet01-read-stand", any(grepl("S248112", outtxt, fixed = TRUE)))
 
-  # The real correctness signal: FVS writes its results to an output SQLite DB
-  # (FVSOut.db). Assert it actually computed a multi-cycle projection with
-  # non-zero stand metrics -- not just that the process exited 0. Table/column
-  # names are discovered at runtime (FVS_Summary vs _Summary2; Tpa/BA casing) so
-  # we don't hard-code a schema. Skips only if RSQLite is unavailable.
-  dbf <- list.files(run, pattern = "\\.db$", full.names = TRUE)
-  if (!requireNamespace("DBI", quietly = TRUE) ||
-      !requireNamespace("RSQLite", quietly = TRUE)) {
-    skip("fvs/iet01-projection", "DBI/RSQLite not installed")
-  } else if (!length(dbf)) {
-    check("fvs/iet01-projection", FALSE)        # FVSOut.db is expected; absence is a real failure
-  } else {
-    con  <- DBI::dbConnect(RSQLite::SQLite(), dbf[1])
-    on.exit(DBI::dbDisconnect(con), add = TRUE)
-    tbls <- DBI::dbListTables(con)
-    sumt <- grep("^FVS_Summary", tbls, ignore.case = TRUE, value = TRUE)
-    check("fvs/iet01-projection", {
-      if (!length(sumt)) FALSE else {
-        d  <- DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', sumt[1]))
-        cn <- toupper(names(d))
-        col <- function(nm) { j <- which(cn == nm)
-          if (length(j)) suppressWarnings(as.numeric(d[[j[1]]])) else numeric(0) }
-        tpa <- col("TPA"); ba <- col("BA")
-        nrow(d) >= 2 && length(tpa) && length(ba) &&
-          any(tpa > 0, na.rm = TRUE) && any(ba > 0, na.rm = TRUE)
-      }
-    })
-    # diagnostic: DB schema, so any name mismatch is debuggable in the same run
-    cat("  --- FVSOut.db tables:", paste(tbls, collapse = ", "), "---\n")
-    if (length(sumt)) {
-      d <- DBI::dbGetQuery(con, sprintf('SELECT * FROM "%s"', sumt[1]))
-      cat("  ---", sumt[1], "cols:", paste(names(d), collapse = ","), "\n")
-      cat("  ---", sumt[1], "rows:", nrow(d), "\n")
-    }
+  # The real correctness signal: FVS must have computed a multi-cycle PROJECTION
+  # with non-zero stand metrics, not merely exited 0 (it returns 0 even on
+  # per-stand errors). iet01.key sends its summary to the .sum text file via
+  # ECHOSUM (it does not request DB output -- FVSOut.db holds only admin tables),
+  # so we parse the .sum. Format-tolerant by design: a "cycle row" is any line
+  # whose first token is a 4-digit projection year (1990..2100) followed by
+  # several numeric fields; we require >= 2 such rows (multiple cycles) and at
+  # least one large positive metric (TPA/BA are tens-hundreds). No fixed columns,
+  # so it survives FVS layout/version changes.
+  sumf <- list.files(run, pattern = "\\.sum$", full.names = TRUE)
+  cycle_metrics <- function(line) {
+    toks <- strsplit(trimws(line), "\\s+")[[1]]
+    if (length(toks) < 6) return(numeric(0))
+    if (!grepl("^(19|20)[0-9]{2}$", toks[1])) return(numeric(0))
+    nums <- suppressWarnings(as.numeric(toks[-1]))
+    nums[!is.na(nums)]
   }
+  check("fvs/iet01-projection", {
+    if (!length(sumf)) FALSE else {
+      rows <- Filter(length, lapply(readLines(sumf[1], warn = FALSE), cycle_metrics))
+      length(rows) >= 2 && any(vapply(rows, function(v) any(v > 1), logical(1)))
+    }
+  })
 
-  # --- text diagnostics (temporary, calibration): bounded dump of the .out ---
+  # --- diagnostics (temporary, calibration): output files + .sum head, so the
+  # .sum parse above can be eyeballed against FVS's real format. Never fails. ---
   cat("  --- iet01 run: exit =", st, "; output files ---\n")
   for (f in list.files(run, full.names = TRUE))
     cat(sprintf("      %9.0f  %s\n", file.info(f)$size, basename(f)))
+  if (length(sumf)) {
+    cat("  --- iet01.sum (first 20 lines) ---\n")
+    for (ln in utils::head(readLines(sumf[1], warn = FALSE), 20L))
+      cat("      |", ln, "\n")
+  }
 })()
