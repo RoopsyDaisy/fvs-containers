@@ -101,10 +101,20 @@ scripts/build_fvs.sh    compile one FVS variant from source
 scripts/build_images.sh build + in-image smoke test (docker/podman)
 scripts/r_workflow/      R workflows: keyword generation (batch + sweep) + rFVS interactive
 scripts/smoke_test.R    regression gate (R env + FVS engine + rFVS load)
+tests/                  R test suite (unit + FVS engine integration); see tests/run_tests.R
 cluster/                Apptainer .sif build + SLURM array template
 data/                   inventory CSV inputs for the R workflows (see data/README.md)
 docs/BUILD.md           how the build works (Meson fvs-build overlay + rFVS wiring)
+docs/WORKFLOW.md        branch/PR/test-gate flow (and how to reuse it elsewhere)
 ```
+
+## Testing & contributing
+
+`tests/run_tests.R` runs pure-R unit tests (the `data/` input guard + the
+keyword-file writer) and an engine integration test (runs FVS on the bundled
+`iet01` `ie` example). It's baked into the images and invoked by
+`scripts/build_images.sh`, so the same suite gates both CI and the GHCR publish.
+The branch → PR → green-CI → merge flow is in [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
 ## License
 

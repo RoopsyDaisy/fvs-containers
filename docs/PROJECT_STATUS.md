@@ -17,6 +17,9 @@ context.
 > - **Known open gap (H1 in `docs/ASSESSMENT.md`):** the R workflows read
 >   `data/*.csv` inventory inputs that are **not committed** (gitignored), so a
 >   fresh clone can't run them until the fixture is added — see `data/README.md`.
+> - **Test layer + workflow added:** `tests/run_tests.R` (unit + FVS engine
+>   integration) is baked into the images and gates CI **and** publish; the
+>   branch/PR/test-gate flow is in `docs/WORKFLOW.md`.
 > See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is

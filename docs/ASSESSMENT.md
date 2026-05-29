@@ -181,5 +181,29 @@ which several no longer were (§4).
 9. Move dev-only tooling out of the shipped surface, or document it.
 10. Reframe the README value-prop around the WebGUI + batch + R layer.
 11. Validate on Hellgate; only then can the headline deliverable be called done.
+
+---
+
+## Addendum (2026-05-29) — test layer + workflow
+
+A follow-up added a base-R test suite (`tests/`, run by `tests/run_tests.R`,
+baked into the images and run by `build_images.sh` so it gates **both** CI and
+the GHCR publish), plus a lightweight branch/PR/test-gate workflow
+(`docs/WORKFLOW.md`, `.github/pull_request_template.md`). Two notes:
+
+- **`publish.yaml` already builds + smoke-tests before pushing**, so the earlier
+  "auto-publish on main is the big risk" framing was overstated: a broken build
+  can't publish. The real lever was that the *gating* test was thin — hence the
+  new suite. Branch protection on `main` (documented in `WORKFLOW.md`) is now
+  defense-in-depth, and is a manual GitHub setting (not script-encoded).
+- **Bug surfaced by the new keyword-writer test:**
+  `fvs_keyword_file_functions.R` formatted `TOPOCODE` but the tree-file `sprintf`
+  emitted `tl$TOPO` — a non-existent column on `TOPOCODE`-schema input, which
+  (via zero-length `sprintf` recycling) silently produced an **empty `.tre`
+  file** (FVS would then run on zero trees). Fixed to `tl$TOPOCODE` and locked
+  with `tests/unit/test_keyword_writer.R`.
+
+> Caveat: R could not be executed in the review/build environment, so the new
+> tests and the writer fix were **validated by CI in-image, not run locally**.
 </content>
 </invoke>
