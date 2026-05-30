@@ -1,0 +1,16 @@
+# hadolint config for docker/Dockerfile and the devcontainer Dockerfile.
+ignored:
+  # DL3008: "pin apt package versions". We deliberately do NOT pin apt versions:
+  # the runtime libs come from the same Ubuntu release as the base image
+  # (ubuntu:24.04 / rocker/r2u:24.04), so the matched APT index is the version
+  # guarantee. Pinning would fight that and rot on every point release. (Same
+  # rationale the fvs-build overlay documents for libgfortran5.)
+  - DL3008
+  # DL3013/DL3059 noise from our single consolidated RUN layers, which are
+  # intentional (one apt layer; renv install+restore must share a layer to avoid
+  # an overlayfs EXDEV rename — see docker/Dockerfile).
+  - DL3059
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+</content>

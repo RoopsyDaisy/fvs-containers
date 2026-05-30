@@ -1,0 +1,51 @@
+name: Lint
+
+# Static-analysis gate, separate from the heavy image build in ci.yaml. Runs
+# natively (no Docker), so it's fast. Two jobs:
+#   - lint     BLOCKING: actionlint + hadolint + gitleaks (via pre-commit)
+#   - advisory NON-BLOCKING: shellcheck + R lintr — informational until findings
+#              are triaged, then promoted into the blocking set.
+on:
+  push:
+    branches-ignore: [main]   # main is post-merge; gate happens on the PR/branch
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: pre-commit (actionlint, hadolint, gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # gitleaks scans history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@v3.0.1
+
+  advisory:
+    name: shellcheck + lintr (advisory, non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true       # informational: never fails the gate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck (all tracked *.sh outside vendor/)
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends shellcheck
+          mapfile -t files < <(git ls-files '*.sh' ':!:vendor/**')
+          echo "Checking ${#files[@]} scripts:"; printf '  %s\n' "${files[@]}"
+          shellcheck --severity=warning "${files[@]}" || true
+
+      - name: R lintr (all tracked *.R outside vendor/)
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends r-base-core
+          Rscript -e 'install.packages("lintr", repos="https://cloud.r-project.org")' || exit 0
+          Rscript -e '
+            files <- system2("git", c("ls-files", "*.R", ":!:vendor/**"), stdout = TRUE)
+            for (f in files) { cat("==", f, "==\n"); print(lintr::lint(f)) }
+          ' || true
+</content>

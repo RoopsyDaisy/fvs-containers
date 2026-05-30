@@ -1,0 +1,32 @@
+# Static-analysis hooks for this repo (R + shell + Docker + GitHub Actions).
+# Run in CI by .github/workflows/lint.yaml (CI-only; not installed in the
+# devcontainer). To run locally if you want: `pipx install pre-commit &&
+# pre-commit run --all-files`.
+#
+# These are the BLOCKING hooks (a red here fails the lint gate). The advisory
+# tools (shellcheck, R lintr) run as a separate non-blocking job in lint.yaml
+# until their findings are triaged and ratcheted up to blocking.
+minimum_pre_commit_version: "3.0.0"
+exclude: '^vendor/'   # submodules carry upstream code we don't lint
+repos:
+  # GitHub Actions workflow linter: type-checks ${{ }} expressions, job/step
+  # schema, runner labels. Would have caught the dead `branches: [fvs-container-
+  # build]` trigger we shipped earlier.
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+
+  # Dockerfile linter (config in .hadolint.yaml). Pinned.
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.1-beta
+    hooks:
+      - id: hadolint-docker
+        files: (^|/)Dockerfile$
+
+  # Secret scanner — blocks accidental credential commits.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+</content>
