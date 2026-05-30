@@ -1,0 +1,41 @@
+# Build-context exclusions for docker/Dockerfile (deliverable images) and the
+# devcontainer Dockerfile. Shrinks context-upload time and avoids busting the
+# cache on changes to files the image doesn't COPY. UPSTREAM_REVIEW.md M3.
+#
+# CAREFUL: docker/Dockerfile selectively COPYs *individual files* out of
+# scripts/r_workflow/ and scripts/reference_scripts/, so we cannot exclude those
+# directories wholesale. Only listed below are paths the build demonstrably
+# does NOT touch.
+
+# VCS / lint metadata — never COPYed.
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.github
+.pre-commit-config.yaml
+.hadolint.yaml
+
+# Docs / license / IDE — never COPYed (tests/ IS copied; not excluded).
+docs
+README.md
+LICENSE
+.vscode
+.devcontainer
+default.code-workspace
+
+# Local-only state. Several are also gitignored — listed here too so a stale
+# checkout can't ship them.
+.devcontainer/fvs-bin
+.claude-backup
+data
+outputs
+logs
+*.log
+*.RData
+*.db
+
+# OS / editor noise.
+.DS_Store
+Thumbs.db
+*.swp
