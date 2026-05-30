@@ -108,6 +108,30 @@ if (have_rFVS) check("rFVS/fvsLoad", {
   } else FALSE
 })
 
+# Guard 5 - CLI/embedder independence: the standalone FVS<variant> CLI must
+# NOT link against the FVS<variant>.so embedder. They are independent build
+# products (CLI is its own executable; .so is the rFVS embedder) -- if the CLI
+# starts depending on the .so, a build/packaging mixup has happened that would
+# silently fail in a CLI-only deployment and confuse provenance. Borrowed from
+# fvs-build's ldd guard (UPSTREAM_REVIEW.md M2). Self-skips where ldd is absent
+# or the CLI isn't on PATH (already covered by fvs/version above).
+check("fvs/cli-independent", {
+  variant <- Sys.getenv("FVS_VARIANT", "ie")
+  bd      <- fvs_bin_dir(variant)
+  exe     <- if (nzchar(bd)) file.path(bd, paste0("FVS", variant)) else ""
+  if (!nzchar(exe) || !nzchar(Sys.which("ldd"))) {
+    cat("  skipped: ldd or FVS CLI not available\n"); TRUE
+  } else {
+    so   <- paste0("FVS", variant, ".so")
+    deps <- suppressWarnings(system2("ldd", shQuote(exe), stdout = TRUE, stderr = TRUE))
+    hits <- grep(so, deps, fixed = TRUE, value = TRUE)
+    if (length(hits))
+      cat("    [fvs/cli-independent] CLI links the embedder:\n",
+          paste("      |", hits, collapse = "\n"), "\n", sep = "")
+    length(hits) == 0
+  }
+})
+
 failed <- names(Filter(isFALSE, results))
 if (length(failed)) {
   cat(sprintf("\nSMOKE TEST FAILED: %s\n", paste(failed, collapse = ", ")))
