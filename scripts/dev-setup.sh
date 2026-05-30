@@ -20,9 +20,15 @@ if [ "$(id -u)" -ne 0 ]; then have sudo && SUDO="sudo"; fi
 
 apt_install() {
   have apt-get || { log "no apt-get; skipping: $*"; return 0; }
-  $SUDO apt-get update -qq 2>/dev/null || { log "apt update blocked; skipping: $*"; return 0; }
+  # Don't bail on `update` errors: third-party PPAs in the base image (e.g.
+  # deadsnakes, ondrej/php) live on ppa.launchpadcontent.net, which isn't on the
+  # Trusted network-access allowlist and 403s -- making apt exit non-zero even
+  # though the main Ubuntu archive (which is on the allowlist) refreshed fine.
+  # `install` runs from the cached lists either way; let it speak for itself.
+  $SUDO apt-get update -qq 2>/dev/null \
+    || log "apt update reported errors (likely blocked PPA); continuing to install"
   $SUDO apt-get install -y --no-install-recommends "$@" 2>/dev/null \
-    || log "apt install blocked/failed (non-fatal): $*"
+    || log "apt install failed (non-fatal): $*"
 }
 
 # Install the shell linter (lints the repo's *.sh; the advisory CI job uses it).
@@ -50,7 +56,9 @@ if have pre-commit; then log "pre-commit present"; else
 fi
 
 log "done. Local checks available (best-effort):"
-log "  pre-commit run --all-files     # blocking gate (actionlint/hadolint/gitleaks)"
+log "  SKIP=hadolint-docker pre-commit run --all-files     # blocking gate (actionlint + gitleaks)"
 log "  shellcheck scripts/*.sh cluster/*.sh"
 log "  Rscript -e 'lintr::lint_dir(\"scripts\")'"
 log "NOTE: Docker image builds + in-image tests remain CI-only (no runtime here)."
+log "NOTE: hadolint-docker is skipped above because pre-commit's hook needs a"
+log "      Docker daemon; CI runs it. Dockerfile changes still lint in CI."
