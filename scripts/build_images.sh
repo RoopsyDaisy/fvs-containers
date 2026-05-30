@@ -30,6 +30,18 @@ SMOKE="${SMOKE:-1}"
 
 command -v "$ENGINE" >/dev/null 2>&1 || { echo "ERROR: '$ENGINE' not found on PATH" >&2; exit 1; }
 
+# Provenance stamped into image OCI labels (best-effort; "unknown" if git absent
+# or not a checkout). VCS_REF = this repo's SHA; FVS_SOURCE_REF = the vendored
+# FVS source SHA when building from source, else the usfs-fvs tag for FVS_BASE=ghcr.
+VCS_REF="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+if [ "$FVS_BASE" = "ghcr" ]; then
+  FVS_SOURCE_REF="${FVS_TAG:-FS2026.1}"
+else
+  FVS_SOURCE_REF="$(git -C vendor/fvs rev-parse --short HEAD 2>/dev/null \
+                    || git rev-parse --short HEAD:vendor/fvs 2>/dev/null || echo unknown)"
+fi
+
 # target -> image name (webgui = GUI; cluster = HPC engine + R/rFVS)
 img_for() {
   case "$1" in
@@ -39,13 +51,35 @@ img_for() {
   esac
 }
 
+# Layer caching (opt-in via CACHE; default off so local/podman builds are
+# unchanged). CACHE=gha uses buildx + the GitHub Actions cache backend, which is
+# why ci.yaml sets it but publish.yaml does NOT -- release builds intentionally
+# miss the cache for reproducibility (see docs/UPSTREAM_REVIEW.md A4). Cache is
+# scoped per target so webgui and cluster don't evict each other. buildx needs
+# --load to put the image in the local store for the smoke/test `docker run`.
+CACHE="${CACHE:-}"
+
 for t in $TARGETS; do
   tag="$(img_for "$t")"
-  echo ">>> build target=$t -> $tag  (FVS_VARIANT=$FVS_VARIANT FVS_BASE=$FVS_BASE)"
-  "$ENGINE" build -f docker/Dockerfile --target "$t" \
-    --build-arg "FVS_VARIANT=${FVS_VARIANT}" \
-    --build-arg "FVS_BASE=${FVS_BASE}" \
-    -t "$tag" .
+  echo ">>> build target=$t -> $tag  (FVS_VARIANT=$FVS_VARIANT FVS_BASE=$FVS_BASE CACHE=${CACHE:-off})"
+  common_args=(
+    -f docker/Dockerfile --target "$t"
+    --build-arg "FVS_VARIANT=${FVS_VARIANT}"
+    --build-arg "FVS_BASE=${FVS_BASE}"
+    --build-arg "VCS_REF=${VCS_REF}"
+    --build-arg "FVS_SOURCE_REF=${FVS_SOURCE_REF}"
+    --build-arg "BUILD_DATE=${BUILD_DATE}"
+    -t "$tag"
+  )
+  if [ "$CACHE" = "gha" ]; then
+    scope="${FVS_VARIANT}-${FVS_BASE}-${t}"
+    "$ENGINE" buildx build "${common_args[@]}" \
+      --cache-from "type=gha,scope=${scope}" \
+      --cache-to "type=gha,mode=max,scope=${scope}" \
+      --load .
+  else
+    "$ENGINE" build "${common_args[@]}" .
+  fi
 done
 
 # Smoke test inside each built image. smoke_test.R is baked into the image (at
