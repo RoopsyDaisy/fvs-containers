@@ -30,6 +30,18 @@ SMOKE="${SMOKE:-1}"
 
 command -v "$ENGINE" >/dev/null 2>&1 || { echo "ERROR: '$ENGINE' not found on PATH" >&2; exit 1; }
 
+# Provenance stamped into image OCI labels (best-effort; "unknown" if git absent
+# or not a checkout). VCS_REF = this repo's SHA; FVS_SOURCE_REF = the vendored
+# FVS source SHA when building from source, else the usfs-fvs tag for FVS_BASE=ghcr.
+VCS_REF="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+if [ "$FVS_BASE" = "ghcr" ]; then
+  FVS_SOURCE_REF="${FVS_TAG:-FS2026.1}"
+else
+  FVS_SOURCE_REF="$(git -C vendor/fvs rev-parse --short HEAD 2>/dev/null \
+                    || git rev-parse --short HEAD:vendor/fvs 2>/dev/null || echo unknown)"
+fi
+
 # target -> image name (webgui = GUI; cluster = HPC engine + R/rFVS)
 img_for() {
   case "$1" in
@@ -45,6 +57,9 @@ for t in $TARGETS; do
   "$ENGINE" build -f docker/Dockerfile --target "$t" \
     --build-arg "FVS_VARIANT=${FVS_VARIANT}" \
     --build-arg "FVS_BASE=${FVS_BASE}" \
+    --build-arg "VCS_REF=${VCS_REF}" \
+    --build-arg "FVS_SOURCE_REF=${FVS_SOURCE_REF}" \
+    --build-arg "BUILD_DATE=${BUILD_DATE}" \
     -t "$tag" .
 done
 

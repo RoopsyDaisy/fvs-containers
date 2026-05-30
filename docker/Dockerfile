@@ -23,6 +23,15 @@ ARG FVS_VARIANT=ie
 ARG FVS_TAG=FS2026.1
 ARG FVS_BASE=source
 
+# Provenance args, stamped into OCI labels on the deliverable images so a pulled
+# image records exactly what produced it (we publish moving :ie/:latest tags
+# that get overwritten -- labels are how you tell two pulls apart). Populated by
+# scripts/build_images.sh from git; default to "unknown" for a bare `docker
+# build`. Inspect with: docker inspect <image> | jq '.[0].Config.Labels'
+ARG VCS_REF=unknown          # git SHA of THIS repo
+ARG FVS_SOURCE_REF=unknown   # vendor/fvs submodule SHA (source) or usfs-fvs tag (ghcr)
+ARG BUILD_DATE=unknown       # ISO-8601 build time
+
 # --- FVS provider A: compile from vendored, pinned source (canonical) ---------
 FROM docker.io/ubuntu:24.04 AS fvs-source
 ARG FVS_VARIANT
@@ -113,6 +122,22 @@ COPY scripts/reference_scripts/fvs_keyword_file_functions.R /opt/fvs/scripts/ref
 # Carries R + rFVS so both the keyword-file generation (rFVS::fvsMakeKeyFile) and
 # the rFVS interactive workflow can run on the cluster, not just the bare CLI.
 FROM fvs-r-base AS cluster
+ARG FVS_VARIANT
+ARG FVS_BASE
+ARG FVS_TAG
+ARG VCS_REF
+ARG FVS_SOURCE_REF
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="fvs-engine" \
+      org.opencontainers.image.description="FVS CLI engine + R + rFVS (HPC batch / R workflows)" \
+      org.opencontainers.image.source="https://github.com/RoopsyDaisy/fvs-containers" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.fvscontainers.fvs.variant="${FVS_VARIANT}" \
+      org.fvscontainers.fvs.base="${FVS_BASE}" \
+      org.fvscontainers.fvs.source-ref="${FVS_SOURCE_REF}" \
+      org.fvscontainers.fvs.ghcr-tag="${FVS_TAG}"
 # Baked so the smoke test runs with no bind mount (avoids podman SELinux/UID
 # mount issues): `<engine> run --rm <image> Rscript /opt/fvs/smoke_test.R`.
 COPY scripts/smoke_test.R /opt/fvs/smoke_test.R
@@ -123,6 +148,22 @@ CMD ["/bin/bash"]
 
 # --- webgui deliverable: + fvsOL Shiny GUI -----------------------------------
 FROM fvs-r-base AS webgui
+ARG FVS_VARIANT
+ARG FVS_BASE
+ARG FVS_TAG
+ARG VCS_REF
+ARG FVS_SOURCE_REF
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="fvs-webgui" \
+      org.opencontainers.image.description="FVS + fvsOL Shiny WebGUI (port 3838)" \
+      org.opencontainers.image.source="https://github.com/RoopsyDaisy/fvs-containers" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.fvscontainers.fvs.variant="${FVS_VARIANT}" \
+      org.fvscontainers.fvs.base="${FVS_BASE}" \
+      org.fvscontainers.fvs.source-ref="${FVS_SOURCE_REF}" \
+      org.fvscontainers.fvs.ghcr-tag="${FVS_TAG}"
 RUN R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
