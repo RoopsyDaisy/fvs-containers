@@ -24,9 +24,15 @@
 #   sbatch --array=1-$(wc -l < keyfiles.txt)%50 cluster/fvs_array.sbatch
 set -euo pipefail
 
-export SIF="$(readlink -f "${SIF:-fvs_ie.sif}")"
-export VARIANT="${VARIANT:-ie}"
+# Resolve paths first, then validate, then export -- so a missing SIF/MANIFEST
+# fails loudly before submitting anything to apptainer/sed. (`readlink -f`
+# returns 0 even for nonexistent paths, so an explicit existence check is needed.)
+SIF="$(readlink -f "${SIF:-fvs_ie.sif}")"
 MANIFEST="$(readlink -f "${MANIFEST:-keyfiles.txt}")"
+[ -f "$SIF" ]      || { echo "ERROR: SIF not found: $SIF" >&2; exit 1; }
+[ -f "$MANIFEST" ] || { echo "ERROR: MANIFEST not found: $MANIFEST" >&2; exit 1; }
+export SIF
+export VARIANT="${VARIANT:-ie}"
 OUTROOT="${OUTROOT:-runs}"
 CLUSTER_DIR="${CLUSTER_DIR:-${SLURM_SUBMIT_DIR:-.}/cluster}"
 
