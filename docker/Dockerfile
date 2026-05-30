@@ -101,6 +101,14 @@ ENV LD_LIBRARY_PATH=/opt/fvs/bin
 ENV FVS_BIN=/opt/fvs/bin
 ENV FVS_VARIANT=${FVS_VARIANT}
 
+# R test bundle (unit + engine-integration), shared by both deliverable targets.
+# Baked so build_images.sh can gate the build/publish on it with no bind mount.
+# Layout mirrors a clone (tests at /opt/fvs/tests, units-under-test under
+# /opt/fvs/scripts) so the harness resolves its sources the same way either place.
+COPY tests /opt/fvs/tests
+COPY scripts/r_workflow/data_paths.R /opt/fvs/scripts/r_workflow/data_paths.R
+COPY scripts/reference_scripts/fvs_keyword_file_functions.R /opt/fvs/scripts/reference_scripts/fvs_keyword_file_functions.R
+
 # --- cluster deliverable: FVS + R + rFVS (CLI batch + R workflows -> .sif) -----
 # Carries R + rFVS so both the keyword-file generation (rFVS::fvsMakeKeyFile) and
 # the rFVS interactive workflow can run on the cluster, not just the bare CLI.

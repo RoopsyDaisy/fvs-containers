@@ -37,64 +37,74 @@ The upstream build docs are fragmented and Windows-centric:
   is the only place with the Linux recipe (`cmake -G"Unix Makefiles" .` then
   `make` in the variant dir).
 
-**Neither documents the two steps below**, both of which are required on Linux.
+Neither documents the two Linux build steps that historically tripped up a
+hand-rolled CMake build (see the *Historical note* at the end). We no longer hit
+them, because we delegate compilation to the **Meson `fvs-build` overlay**, which
+handles both.
 
 ## The FVS engine build (per variant)
 
-Encapsulated in [`scripts/build_fvs.sh`](../scripts/build_fvs.sh). For variant `ie`:
+Encapsulated in [`scripts/build_fvs.sh`](../scripts/build_fvs.sh), a thin wrapper
+over the [`vendor/fvs-build`](../vendor/fvs-build) Meson overlay
+([Vibrant-Planet-Open-Science/fvs-build](https://github.com/Vibrant-Planet-Open-Science/fvs-build)).
+For variant `ie` it:
 
-1. **Restrict to one variant.** `bin/CMakeLists.txt` globs `FVS*_sourceList.txt`
-   and configures all ~25 variants. We narrow the glob to `FVSie_sourceList.txt`.
-2. **Configure:** `cmake -G "Unix Makefiles" .` in `bin/` generates
-   `bin/FVSie_CmakeDir/` and configures it (no compilation yet).
-3. **GAP #1 — copy `wdbkwtdata.inc`.** `ie/vols.f` does `INCLUDE 'wdbkwtdata.inc'`.
-   That file ships in the NVEL submodule (`volume/NVEL/wdbkwtdata.inc`), but the
-   CMake logic only adds `.h`/`.F77` directories to the include path — never `.inc`
-   directories — so the compile fails at ~12% with *"Cannot open included file
-   'wdbkwtdata.inc'"*. The build directory itself is on the include path, so the
-   fix is to copy the file into `bin/FVSie_CmakeDir/` before `make`. (Tellingly,
-   prebuilt FVS build directories ship with this file already copied in — the step
-   is real, just undocumented.)
-4. **Compile:** `make` in `bin/FVSie_CmakeDir/`.
-
-This produces four artifacts:
+1. **Preflight** — checks `bin/FVSie_sourceList.txt` and the NVEL include file
+   (`volume/NVEL/wdbkwtdata.inc`) exist, and deletes stray `*.mod` files that
+   otherwise corrupt the compile (*"Reading module … Unexpected EOF"*).
+2. **Configure + compile** — `meson setup <build> vendor/fvs-build
+   -Dfvs_source_dir=vendor/fvs -Dvariants=ie -Dprofile=reference` then
+   `meson compile`. The overlay restricts the build to the requested variant(s),
+   puts the NVEL `.inc` directory on the include path, and produces the embedder
+   library named the way rFVS expects — i.e. it absorbs the two historical gaps.
+3. **Collect** — copies the two artifacts rFVS/the CLI need into `<out_bin_dir>`:
 
 | Artifact | Kind | Contents |
 |----------|------|----------|
-| `FVSie` | executable | command-line FVS (reads keyword filename on stdin) |
-| `libFVS_ie.so` | shared lib | the Fortran engine; NEEDs the two below |
-| `libFVSsql.so` | shared lib | SQLite I/O **and** the `Cfvs*` R-interface wrappers (`base/apisubsc.c`, built under `-DCMPgcc`) |
-| `libFVSfofem.so` | shared lib | Fire & Fuels (FOFEM) C code |
+| `FVSie` | executable | command-line FVS (invoke with `--keywordfile=<name>`) |
+| `FVSie.so` | shared lib | the self-contained embedder rFVS/PyFVS `dyn.load`s; contains the `Cfvs*` R-interface symbols (no `lib` prefix) |
 
 ## The WebGUI (rFVS / fvsOL) wiring
 
-`rFVS::fvsLoad(bin=..., fvsProgram="FVSie")` calls `dyn.load("FVSie.so")` — i.e. it
-expects a single loadable library named `<program>.so`, and then calls API routines
-such as `.C("CfvsSetCmdLine", PACKAGE="FVSie")`.
+`rFVS::fvsLoad(bin=..., fvsProgram="FVSie")` calls `dyn.load("FVSie.so")` — it
+expects a single loadable library named `<program>.so`, then calls API routines
+such as `.C("CfvsSetCmdLine", PACKAGE="FVSie")`. The `fvs-build` overlay produces
+exactly that self-contained `FVSie.so` (with the `Cfvs*` symbols and the engine's
+dependencies linked in), so `build_fvs.sh` just copies it next to the CLI — no
+symlink or manual library juggling required. `LD_LIBRARY_PATH` (or the bin dir on
+`PATH`) covers any remaining runtime `.so` lookups; the `docker/Dockerfile`
+targets set `LD_LIBRARY_PATH=/opt/fvs/bin`, and `smoke_test.R`'s `rFVS/fvsLoad`
+guard verifies the embedder actually loads.
 
-- The CMake build does **not** produce a file named `FVSie.so`; it produces
-  `libFVS_ie.so`.
-- The `Cfvs*` symbols rFVS calls live in `libFVSsql.so`, **not** in `libFVS_ie.so`.
-
-**GAP #2 — the `FVSie.so` symlink.** `libFVS_ie.so` declares `libFVSsql.so` and
-`libFVSfofem.so` as `NEEDED` dependencies (confirmed with `readelf -d`). So loading
-`libFVS_ie.so` pulls in the other two, and `dlsym` resolves the `Cfvs*` symbols
-through the dependency chain. Therefore we expose the engine to rFVS as:
-
-```
-FVSie.so -> libFVS_ie.so   (symlink)
-```
-
-with `LD_LIBRARY_PATH` (or the bin dir) covering the dependency `.so` files.
-`scripts/build_fvs.sh` creates this symlink automatically.
-
-The R side is plain package installation (per the upstream `makefile`s, via
-`devtools::install`): install `rFVS` then `fvsOL`; `fvsOL`'s dependencies are listed
-in `vendor/fvs-interface/fvsOL/DESCRIPTION` (shiny, Cairo, rhandsontable, ggplot2,
-RSQLite, plyr, dplyr, colourpicker, rgl, leaflet, zip, openxlsx, shinyFiles).
+The R side is plain package installation: install `rFVS` then `fvsOL` from the
+patched `vendor/fvs-interface` source (`roxygenize` → `remotes::install_local`).
+`fvsOL`'s dependencies are listed in `vendor/fvs-interface/fvsOL/DESCRIPTION`
+(shiny, Cairo, rhandsontable, ggplot2, RSQLite, plyr, dplyr, colourpicker, rgl,
+leaflet, zip, openxlsx, shinyFiles) and pinned via `renv.lock`.
 
 ## Verified
 
-The engine build above was verified on Ubuntu 24.04 / gfortran 13.3 / cmake 3.28
-against FVS commit `58a9752` (variant `ie`), producing a working `FVSie`
-(revision RV:20260401).
+The image build (FVS compiled from source via the overlay + the renv-pinned R
+stack) was validated on podman/Fedora against FVS tag `FS2026.1` (commit
+`58a9752`, variant `ie`), producing a working `FVSie` (revision RV:20260401) that
+passes the in-image smoke test, including the `rFVS/fvsLoad` embedder guard.
+
+## Historical note: the previous hand-rolled CMake build
+
+Before adopting the `fvs-build` overlay, this repo compiled FVS directly with
+CMake and had to work around two undocumented Linux gotchas. They're recorded
+here because they explain *why* the overlay exists and may help anyone reading an
+older FVS build:
+
+- **GAP #1 — `wdbkwtdata.inc`.** `ie/vols.f` does `INCLUDE 'wdbkwtdata.inc'`,
+  shipped in the NVEL submodule, but `bin/CMakeLists.txt` only added `.h`/`.F77`
+  dirs to the include path — never `.inc` — so the compile failed at ~12% with
+  *"Cannot open included file 'wdbkwtdata.inc'"*. The fix was copying the file
+  into the configured build dir before `make`.
+- **GAP #2 — the `FVSie.so` name.** The CMake build produced `libFVS_ie.so` (with
+  the `Cfvs*` symbols actually in `libFVSsql.so`, a `NEEDED` dependency), but
+  rFVS `dyn.load`s `FVSie.so`, so a `FVSie.so -> libFVS_ie.so` symlink was
+  required and the dependency `.so`s had to be on `LD_LIBRARY_PATH`.
+
+The Meson overlay restricts variants, fixes the include path, and emits a single
+self-contained `FVSie.so` directly, so neither workaround is needed today.

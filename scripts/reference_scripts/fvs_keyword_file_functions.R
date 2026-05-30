@@ -166,7 +166,7 @@ write.fvs.tree.file <- function( tl, std, treefilename )
                          tl$DIAMETER,tl$DG,tl$HT,tl$HTTOPK,tl$HTG,tl$CRcode,
                          tl$DAMAGE1,tl$SEVERITY1,tl$DAMAGE2,tl$SEVERITY2,tl$DAMAGE3,tl$SEVERITY3,
                          tl$TVAL,tl$CUT,
-                         tl$SLOPE,tl$ASPECT,tl$PV_CODE,tl$TOPO,tl$SPREP,tl$AGE)
+                         tl$SLOPE,tl$ASPECT,tl$PV_CODE,tl$TOPOCODE,tl$SPREP,tl$AGE)
   cat(flat_format, file=treefilename, sep="\n")              
   
 }

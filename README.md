@@ -13,8 +13,9 @@ and ships it three ways:
 | Run thousands of simulations | **Apptainer + SLURM** | researchers on the Hellgate cluster |
 
 FVS is built from the [`vendor/fvs`](vendor/fvs) submodule (pinned to a tagged
-release) including the NVEL volume-library submodule. The build recipe and the two
-undocumented Linux gotchas it handles are written up in [docs/BUILD.md](docs/BUILD.md).
+release) including the NVEL volume-library submodule, compiled by the Meson
+[`fvs-build`](vendor/fvs-build) overlay. The build recipe — and how it wires the
+engine up for the rFVS/fvsOL R layer — is written up in [docs/BUILD.md](docs/BUILD.md).
 
 > **Clone with submodules** (the FVS source nests one of its own):
 > ```bash
@@ -100,6 +101,25 @@ scripts/build_fvs.sh    compile one FVS variant from source
 scripts/build_images.sh build + in-image smoke test (docker/podman)
 scripts/r_workflow/      R workflows: keyword generation (batch + sweep) + rFVS interactive
 scripts/smoke_test.R    regression gate (R env + FVS engine + rFVS load)
+tests/                  R test suite (unit + FVS engine integration); see tests/run_tests.R
 cluster/                Apptainer .sif build + SLURM array template
-docs/BUILD.md           how the build works (and the upstream gaps it fills)
+data/                   inventory CSV inputs for the R workflows (see data/README.md)
+docs/BUILD.md           how the build works (Meson fvs-build overlay + rFVS wiring)
+docs/WORKFLOW.md        branch/PR/test-gate flow (and how to reuse it elsewhere)
 ```
+
+## Testing & contributing
+
+`tests/run_tests.R` runs pure-R unit tests (the `data/` input guard + the
+keyword-file writer) and an engine integration test (runs FVS on the bundled
+`iet01` `ie` example). It's baked into the images and invoked by
+`scripts/build_images.sh`, so the same suite gates both CI and the GHCR publish.
+The branch → PR → green-CI → merge flow is in [docs/WORKFLOW.md](docs/WORKFLOW.md).
+
+## License
+
+This repository's own code (Dockerfiles, build/cluster/R-workflow scripts) is
+released under the [MIT License](LICENSE). The vendored upstreams it packages —
+the USDA FVS engine and the rFVS/fvsOL R packages under `vendor/` — are works of
+the U.S. Forest Service and carry their own (public-domain) terms; MIT covers
+only this repo's wrapper layer, not the vendored source.

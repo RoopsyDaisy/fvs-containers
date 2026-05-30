@@ -15,7 +15,8 @@ R), then run them in parallel — one FVS invocation per keyword file.
 1. Produce one Apptainer image (`.sif`) containing the FVS CLI engine for your
    variant (e.g. `ie`). Put it on BeeGFS (`/mnt/beegfs/...`).
 2. Submit a **SLURM job array** — one array task per `.key` file. Each task runs
-   `echo stand.key | apptainer exec fvs.sif FVSie` in its own output directory.
+   `apptainer exec fvs.sif FVSie --keywordfile=stand.key` in its own output
+   directory.
 3. Collect the per-run outputs (`.out`, `.trl`, `.sum`, and the FVS SQLite DB).
 
 ## Why this shape
@@ -30,19 +31,25 @@ R), then run them in parallel — one FVS invocation per keyword file.
 
 ## The FVS engine and how it takes input
 
-Important and easy to trip on: **this FVS build reads the keyword *filename*
-from standard input, not from a `--keywordfile` flag.** Running `FVSie` with no
-input prints:
+Important and easy to trip on: **invoke FVS with the `--keywordfile=` flag, not
+by piping the filename on stdin.** Run with no input and it prompts:
 
 ```
 ENTER KEYWORD FILE NAME (15):
 ```
 
-So the working invocation is:
+You *can* answer that prompt over stdin (`echo mystand.key | FVSie`), but that
+only works for fully *database-self-contained* keyword files. For *flat-file*
+keyword files (a `.key` with a separate `.tre`) FVS drops into interactive
+per-filename prompting and the run fails. So the robust invocation — used by the
+batch runner (`cluster/fvs_run_one.sh`) for **both** styles — is:
 
 ```bash
-echo mystand.key | FVSie       # NOT  FVSie --keywordfile=mystand.key
+FVSie --keywordfile=mystand.key   # NOT  echo mystand.key | FVSie
 ```
+
+With `--keywordfile=`, FVS derives the auxiliary filenames (`.tre`/`.out`/`.trl`)
+from the keyword base name and runs non-interactively.
 
 FVS resolves the keyword file relative to its **current working directory** and
 writes its outputs (`.out`, `.trl`, `.sum`, and an output SQLite `.db` if the

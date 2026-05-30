@@ -39,6 +39,6 @@ Rscript scripts/smoke_test.R
 cat <<EOF
 
 FVS is built in ${BIN_DIR} (variant ${VARIANT}).
-  - Command line:  echo mykeys.key | LD_LIBRARY_PATH=${BIN_DIR} ${BIN_DIR}/FVS${VARIANT}
+  - Command line:  LD_LIBRARY_PATH=${BIN_DIR} ${BIN_DIR}/FVS${VARIANT} --keywordfile=mykeys.key
   - WebGUI:        bash scripts/run_webgui.sh   # then open the forwarded port 3838
 EOF

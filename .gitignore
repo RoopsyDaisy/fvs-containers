@@ -29,8 +29,12 @@ build/
 !.vscode/settings.json
 !.vscode/mcp.json
 
-# Data (customize as needed)
-data/
+# Data (customize as needed). data/ holds the inventory CSV inputs for the R
+# workflows; the CSVs themselves are not shipped (see data/README.md), but the
+# README documenting the data contract is tracked. (data/* — not data/ — so the
+# re-include of README.md below is honoured.)
+data/*
+!data/README.md
 *.csv
 *.parquet
 *.h5
