@@ -40,9 +40,18 @@ fi
 if have Rscript; then log "R present"; else
   log "installing r-base-core"; apt_install r-base-core
 fi
-if have Rscript && ! Rscript -e 'requireNamespace("lintr")' >/dev/null 2>&1; then
+if have Rscript && ! R_PROFILE_USER=/dev/null Rscript --vanilla \
+    -e 'q(status = !requireNamespace("lintr", quietly = TRUE))' >/dev/null 2>&1; then
+  # lintr pulls xml2/openssl/curl, whose source builds need libxml2-dev,
+  # libssl-dev, libcurl4-openssl-dev system headers (CRAN ships source on Linux).
+  log "installing lintr system deps (libxml2-dev libssl-dev libcurl4-openssl-dev)"
+  apt_install libxml2-dev libssl-dev libcurl4-openssl-dev
   log "installing lintr R package"
-  Rscript -e 'install.packages("lintr", repos="https://cloud.r-project.org")' >/dev/null 2>&1 \
+  # --vanilla + R_PROFILE_USER=/dev/null bypasses the project's renv autoload,
+  # which would otherwise route through packagemanager.posit.co (not allowlisted)
+  # and ignore the `repos=` we pass. cloud.r-project.org IS allowlisted.
+  R_PROFILE_USER=/dev/null Rscript --vanilla \
+      -e 'install.packages("lintr", repos="https://cloud.r-project.org")' >/dev/null 2>&1 \
     || log "lintr install blocked (non-fatal)"
 fi
 
