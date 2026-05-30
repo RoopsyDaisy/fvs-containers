@@ -29,3 +29,14 @@ repos:
     rev: v8.21.2
     hooks:
       - id: gitleaks
+
+  # Shell linter (promoted from advisory; the repo is already clean at the
+  # default severity, so the gate just locks that in). pip-installed wrapper
+  # so the pre-commit env owns the binary -- no system shellcheck required.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        # Don't lint *.sbatch (SLURM array directives, not a portable shell):
+        # the files declare bash but shellcheck SC1091 etc. would noise.
+        exclude: '\.sbatch$'
