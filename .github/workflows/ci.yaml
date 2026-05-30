@@ -37,9 +37,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive  # vendor/fvs (+NVEL), fvs-build, fvs-interface
+      # buildx + the GHA cache backend (CACHE=gha) so unchanged layers (the FVS
+      # compile, renv restore) are reused across PR/branch runs. publish.yaml
+      # deliberately omits this -- release builds miss the cache for
+      # reproducibility (docs/UPSTREAM_REVIEW.md A4).
+      - uses: docker/setup-buildx-action@v3
       - name: Build + smoke test
         run: bash scripts/build_images.sh
         env:
           ENGINE: docker
           FVS_VARIANT: ie
           FVS_BASE: source
+          CACHE: gha
