@@ -99,7 +99,7 @@ The concrete scripts live in [`cluster/`](../cluster/) and are **manifest-driven
 
 - [`cluster/build_sif.sh`](../cluster/build_sif.sh) — convert the FVS OCI image to a `.sif`.
 - [`cluster/fvs_array.sbatch`](../cluster/fvs_array.sbatch) — the SLURM array job.
-- [`cluster/fvs_run_one.sh`](../cluster/fvs_run_one.sh) — the per-task unit: make an isolated run dir, stage shared inputs, run `FVS<variant>` on the keyword filename via stdin (`apptainer exec` if `SIF` is set, else the native binary).
+- [`cluster/fvs_run_one.sh`](../cluster/fvs_run_one.sh) — the per-task unit: make an isolated run dir, stage shared inputs, run `FVS<variant> --keywordfile=<key>` (`apptainer exec` if `SIF` is set, else the native binary).
 - [`cluster/run_local.sh`](../cluster/run_local.sh) — run the same batch with **no scheduler/container** against a native binary (testing / non-HPC machines).
 
 Full how-to in [`cluster/README.md`](../cluster/README.md). The essentials:
