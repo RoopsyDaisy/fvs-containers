@@ -48,4 +48,3 @@ jobs:
             files <- system2("git", c("ls-files", "*.R", ":!:vendor/**"), stdout = TRUE)
             for (f in files) { cat("==", f, "==\n"); print(lintr::lint(f)) }
           ' || true
-</content>
