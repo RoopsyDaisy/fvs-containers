@@ -10,6 +10,12 @@ ignored:
   # intentional (one apt layer; renv install+restore must share a layer to avoid
   # an overlayfs EXDEV rename — see docker/Dockerfile).
   - DL3059
+  # DL3006: "tag the image version explicitly". False positive on the provider-
+  # selector stage `FROM fvs-${FVS_BASE} AS fvs-bin`: that resolves to an
+  # INTERNAL stage (fvs-source / fvs-ghcr), not an external pull -- hadolint
+  # can't resolve the ARG to see it's an alias. All genuinely-external bases
+  # (ubuntu:24.04, usfs-fvs:${FVS_TAG}, rocker/r2u:24.04) ARE tagged.
+  - DL3006
 trustedRegistries:
   - docker.io
   - ghcr.io
