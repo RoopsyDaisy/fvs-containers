@@ -1,14 +1,34 @@
-# Running FVS in parallel on Hellgate (Apptainer + SLURM)
+# Running FVS in parallel on Hellgate / GSCC (Apptainer + SLURM)
 
 Approach doc for batch command-line FVS runs on the University of Montana
-**Hellgate** research cluster. Goal: build many keyword (`.key`) files (e.g. in
-R), then run them in parallel — one FVS invocation per keyword file.
+**Hellgate** research cluster — now rebranded as the **Griz Shared Computing
+Cluster (GSCC)**; docs at [docs.gscc.umt.edu](https://docs.gscc.umt.edu/).
+Goal: build many keyword (`.key`) files (e.g. in R), then run them in parallel —
+one FVS invocation per keyword file.
 
 > Status: the batch **runner and pattern are implemented in [`cluster/`](../cluster/)
 > and validated locally** (dev container, native engine). What's **not yet tested
-> on Hellgate** are the cluster-specific pieces (real `.sif` under Apptainer/FUSE,
-> SLURM submission, partitions, fakeroot, BeeGFS) — derived from UM RCI docs and
-> marked **[confirm on cluster]** below; verify once we have access.
+> on the cluster** are the cluster-specific pieces (real `.sif` under
+> Apptainer/FUSE, SLURM submission, partitions, fakeroot, the actual storage
+> layer) — marked **[confirm on cluster]** below; verify once we have access.
+>
+> **First-contact runbook:** the very first cluster session, run
+> [`cluster/hellgate_probe.sh`](../cluster/hellgate_probe.sh). It probes
+> partitions, walltime caps, Apptainer + fakeroot, the storage layout, and
+> login-node registry egress in one shot, then submits one tiny smoke job to
+> prove the path end-to-end. Output is a single markdown report you can paste
+> back here to calibrate `cluster/fvs_array.sbatch` defaults.
+
+> **Storage layout (per GSCC docs).** Home (~500 GB, backed up) / Scratch
+> (NVMe, ~90-day, no redundancy) / Project (~10 TB per lab, mirrored HDD,
+> multi-year). Older Hellgate docs reference a BeeGFS path
+> (`/mnt/beegfs/projects/...`) — that may or may not still apply on GSCC; the
+> probe script reports whichever layout is live.
+
+> **Prior art search (2026-05-30): none.** No other public FVS-on-HPC effort
+> turned up in a focused scout (GitHub code/repo search, web search) — closest
+> is Vibrant Planet's `usfs-fvs` GHCR image, which we consume but doesn't
+> address the SLURM-array side.
 
 ## TL;DR
 
@@ -131,17 +151,25 @@ concurrent writers to one SQLite file contend.
 
 ## Open questions to confirm with cluster access (next week)
 
-- **Partitions & limits** — names, max walltime, cores/mem per node, array-size
-  and concurrent-task caps (`sinfo`, cluster policy).
-- **Network egress** — can the login node pull `docker://`/`ghcr.io`? Determines
-  build-on-cluster vs build-and-transfer.
-- **fakeroot** — enabled for the account? (docs say "available".)
-- **Modules** — is `apptainer` on `PATH` by default, or `module load`? Is R
-  available on Hellgate for generating the keyword files there?
-- **BeeGFS** — project path, quotas, and whether to publish the SIF to the
-  shared `/mnt/beegfs/projects/resources/Containers` area.
+The first-session script [`cluster/hellgate_probe.sh`](../cluster/hellgate_probe.sh)
+answers these mechanically; the list below is what we expect its report to
+populate.
+
+- **Partitions & limits** — names, default/max walltime, cores/mem per node,
+  array-size and concurrent-task caps (`sinfo`, `scontrol show config`).
+- **Network egress** — can the login node reach `ghcr.io` / Docker Hub? If yes,
+  `apptainer pull docker://...` is in play; if no, build off-cluster + `scp`.
+- **fakeroot** — `/etc/subuid` entry present for the account? (UM RCI docs
+  describe fakeroot as "available", but per-account.)
+- **Modules** — is `apptainer` on `PATH` by default or behind `module load`?
+  Is R available for keyword generation directly on the cluster?
+- **Storage** — actual mount paths and per-area quotas (Home / Scratch /
+  Project on GSCC; possibly BeeGFS on legacy Hellgate). Whether to publish the
+  SIF to a shared `Containers` area for other users.
+- **Account / QOS** — `sacctmgr` association for our account; the sbatch
+  template will need `--account=<name>`.
 - **FVS CLI path in the image** — confirm `FVS<variant>` is on `PATH` (and the
-  exact stdin/return-code behaviour) in our `fvs-build`-based image.
+  exact return-code behaviour) inside the pulled `.sif`.
 
 ## References
 
