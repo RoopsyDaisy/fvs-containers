@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# First-contact GSCC/Hellgate probe: gather everything we need to know about
-# the cluster in one shot, write a single report, exit. Run this on the GSCC
-# (a.k.a. Hellgate, "Griz Shared Computing Cluster" -- docs.gscc.umt.edu) login
-# node the first time we have access -- it answers the open questions in
-# docs/HELLGATE_FVS.md "[confirm on cluster]" without requiring any of our
-# images yet, then runs ONE minimal Apptainer + SLURM end-to-end test to prove
-# the path is alive.
+# First-contact cluster probe: gather everything we need to know about the
+# cluster in one shot, write a single report, exit. Cluster-neutral -- works
+# equally on UM's Hellgate (hellgate.rci.umt.edu, the Beowulf/BeeGFS HPC system
+# this repo primarily targets) and on UM's newer GSCC / Griz
+# (login.gscc.umt.edu, Home/Scratch/Project layout, docs.gscc.umt.edu).
+#
+# Run on the login node the first time we have access: it answers the open
+# questions in docs/HELLGATE_FVS.md "[confirm on cluster]" without requiring
+# any of our images yet, then runs ONE minimal Apptainer + SLURM end-to-end
+# test to prove the path is alive.
 #
 # Safe: read-only except for files under $WORKDIR (default ./hellgate_probe/),
 # never writes to BeeGFS shared areas, never installs anything, never modifies
@@ -114,13 +117,13 @@ fi
 
 # ----------------------------------------------------------------- filesystems ---
 section "Filesystems / quotas"
-# Per https://docs.gscc.umt.edu/, GSCC exposes three areas:
-#   Home    ~500 GB     persistent, backed up
-#   Scratch ~NVMe       ~90-day retention, no redundancy   (path TBC; commonly /scratch)
-#   Project ~10 TB/lab  mirrored HDD, multi-year           (path TBC; commonly /project)
-# We probe these plus the older "Hellgate" BeeGFS layout, since some refs in
-# our own docs still describe BeeGFS. Whichever exists reports as such; the
-# other is silently skipped.
+# Probe both UM cluster layouts; whichever exists reports as such.
+#   Hellgate (this repo's primary target): BeeGFS user-facing (~800 TB),
+#     /mnt/beegfs/... is the canonical project path per UM RCI docs.
+#   GSCC (the newer cluster, https://docs.gscc.umt.edu/): three areas --
+#     Home (~500 GB, backed up), Scratch (NVMe, ~90-day),
+#     Project (~10 TB/lab, mirrored HDD). Paths typically /home, /scratch,
+#     /project but confirm.
 for p in /home "$HOME" /scratch /project /mnt/beegfs /mnt/scratch /mnt/project; do
   [ -e "$p" ] || continue
   note "\`$p\`: exists ($(stat -c '%U:%G %A' "$p" 2>/dev/null), size $(stat -c '%s' "$p" 2>/dev/null))"
@@ -249,7 +252,7 @@ Use the sections above to answer:
 2. **Network egress** — did the GHCR/Docker Hub probes succeed? If not, the canonical path is build-off-cluster + `scp`.
 3. **fakeroot** — was the subuid entry present? If yes, try `apptainer build --fakeroot fvs_ie.sif <def>` later. If no, ask RCI for an entry, or stay on the off-cluster build path.
 4. **Modules** — is `apptainer` on PATH by default, or behind `module load`? Is R available (`module avail r`)?
-5. **Storage** — per GSCC docs, layout is Home (~500 GB) / Scratch (NVMe, ~90-day) / Project (~10 TB, mirrored HDD). Confirm the actual mount paths above and the quota for each. (Older docs referenced BeeGFS; that may no longer apply on GSCC.)
+5. **Storage** — confirm the actual mount paths and per-area quotas. Hellgate uses BeeGFS (`/mnt/beegfs/...` per UM RCI docs); GSCC uses Home (~500 GB) / Scratch (NVMe, ~90-day) / Project (~10 TB). The probe reports whichever layout is live.
 6. **Account/QOS** — did `sacctmgr` show your association? Note the account name; the sbatch script will need `--account=`.
 
 When done, paste `hellgate_probe/report.md` back to the fvs-containers chat and we'll

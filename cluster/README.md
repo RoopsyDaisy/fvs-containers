@@ -1,10 +1,10 @@
-# Running FVS at scale on an HPC cluster (Hellgate / GSCC)
+# Running FVS at scale on an HPC cluster (Hellgate)
 
 This directory packages the FVS engine image (the `cluster` target of
 [docker/Dockerfile](../docker/Dockerfile) — FVS + R + rFVS)
 for batch use on an Apptainer + SLURM cluster such as the University of
-Montana's **Hellgate** Research cluster (now the **Griz Shared Computing
-Cluster / GSCC** — [docs.gscc.umt.edu](https://docs.gscc.umt.edu/)). For
+Montana's **Hellgate** Research cluster
+([`hellgate.rci.umt.edu`](https://www.umt.edu/it/rci/hellgate/)). For
 interactive single-stand exploration use the WebGUI instead (see the top-level
 run docs); the cluster path is for large simulation campaigns — many keyword
 files run in parallel.
@@ -14,7 +14,11 @@ files run in parallel.
 > It reports partitions, walltime caps, Apptainer + fakeroot, the storage
 > layout, login-node registry egress, and runs one tiny SLURM smoke job to
 > prove the end-to-end path is alive. The output (`hellgate_probe/report.md`)
-> calibrates the defaults in `fvs_array.sbatch`.
+> calibrates the defaults in `fvs_array.sbatch`. The probe is
+> cluster-neutral: it also works on UM's newer
+> [GSCC / Griz](https://docs.gscc.umt.edu/) cluster if the lecturer turns
+> out to be on that one instead — those are two separate UM systems with
+> different storage layouts.
 
 ## 1. Build the image and convert to a `.sif`
 
