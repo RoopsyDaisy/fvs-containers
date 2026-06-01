@@ -2,9 +2,9 @@ name: Lint
 
 # Static-analysis gate, separate from the heavy image build in ci.yaml. Runs
 # natively (no Docker), so it's fast. Two jobs:
-#   - lint     BLOCKING: actionlint + hadolint + gitleaks (via pre-commit)
-#   - advisory NON-BLOCKING: shellcheck + R lintr — informational until findings
-#              are triaged, then promoted into the blocking set.
+#   - lint     BLOCKING: actionlint + hadolint + gitleaks + shellcheck (via pre-commit)
+#   - advisory NON-BLOCKING: R lintr — informational until findings are triaged,
+#              then promoted into the blocking set (shellcheck already was).
 on:
   push:
     branches-ignore: [main]   # main is post-merge; gate happens on the PR/branch
@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   lint:
+    # NOTE: kept the original job name so any branch-protection "required
+    # status check" set against it still matches. The hook list now includes
+    # shellcheck too -- see the header comment above and .pre-commit-config.yaml.
     name: pre-commit (actionlint, hadolint, gitleaks)
     runs-on: ubuntu-latest
     steps:
@@ -27,18 +30,11 @@ jobs:
       - uses: pre-commit/action@v3.0.1
 
   advisory:
-    name: shellcheck + lintr (advisory, non-blocking)
+    name: lintr (advisory, non-blocking)
     runs-on: ubuntu-latest
     continue-on-error: true       # informational: never fails the gate
     steps:
       - uses: actions/checkout@v4
-
-      - name: shellcheck (all tracked *.sh outside vendor/)
-        run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends shellcheck
-          mapfile -t files < <(git ls-files '*.sh' ':!:vendor/**')
-          echo "Checking ${#files[@]} scripts:"; printf '  %s\n' "${files[@]}"
-          shellcheck --severity=warning "${files[@]}" || true
 
       - name: R lintr (all tracked *.R outside vendor/)
         run: |
