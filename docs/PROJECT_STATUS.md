@@ -3,7 +3,7 @@
 Handoff doc so this work can be resumed in a fresh session without losing
 context.
 
-> **Current state (updated 2026-05-29).** Several items below were written while
+> **Current state (updated 2026-06-01).** Several items below were written while
 > work was in flight and have since landed — read this banner first, then treat
 > the rest as historical narrative:
 > - **Repo renamed** `fors591` → `fvs-containers` (done; the old dev branch
@@ -28,6 +28,24 @@ context.
 >   publishes the image (and validates the engine); the toolkit owns the workflow.
 >   The unit tests moved with their code; the in-image suite is engine-only.
 >   References to `cluster/` / `scripts/r_workflow/` further below are historical.
+>   (The slim landed via **PR #16, merged to `main`**.) The toolkit is now
+>   organized around **three example workflows** — single-run, parallel-batch
+>   (incl. Monte Carlo sweep), and an rFVS-in-the-loop array — all verified
+>   locally; see its `AGENTS.md`.
+> - **Hellgate VALIDATED (2026-06-01):** FVS ran on a real compute node via the
+>   GHCR-pulled `.sif` (job 2215378). Confirmed: SLURM account `afflecklab`,
+>   partition `'cpu(all)'`, login-node egress to GHCR open, fakeroot unavailable,
+>   `MaxArraySize=10001`, run-on-scratch→keep-on-projects. Engine image pulls
+>   public + unauthenticated.
+> - **WebGUI is pull-based for foresters** — the `README.md` now has per-OS
+>   (macOS/Windows/Linux) **pull + run** instructions for
+>   `ghcr.io/roopsydaisy/fvs-containers-webgui:ie` (not "build it"); the build path
+>   is a maintainers fold-out. (Landing via branch `webgui-readme`.)
+> - **CI gotcha:** `ci.yaml`/`publish.yaml` use `paths-ignore` for `**.md`/`docs/**`,
+>   so a **docs-only PR skips the "Build images…" job → its required status check
+>   never reports → the PR sticks at "Expected — Waiting."** Admin-merge docs-only
+>   PRs, or make the required check always-report (drop `paths-ignore`, detect
+>   docs-only inside the job, skip the build but finish green). Not yet fixed.
 > See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is
