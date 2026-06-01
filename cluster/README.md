@@ -14,11 +14,7 @@ files run in parallel.
 > It reports partitions, walltime caps, Apptainer + fakeroot, the storage
 > layout, login-node registry egress, and runs one tiny SLURM smoke job to
 > prove the end-to-end path is alive. The output (`hellgate_probe/report.md`)
-> calibrates the defaults in `fvs_array.sbatch`. The probe is
-> cluster-neutral: it also works on UM's newer
-> [GSCC / Griz](https://docs.gscc.umt.edu/) cluster if the lecturer turns
-> out to be on that one instead — those are two separate UM systems with
-> different storage layouts.
+> calibrates the defaults in `fvs_array.sbatch`.
 
 ## 1. Build the image and convert to a `.sif`
 

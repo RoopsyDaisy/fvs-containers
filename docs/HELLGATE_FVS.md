@@ -17,18 +17,7 @@ one FVS invocation per keyword file.
 > partitions, walltime caps, Apptainer + fakeroot, the storage layout, and
 > login-node registry egress in one shot, then submits one tiny smoke job to
 > prove the path end-to-end. Output is a single markdown report you can paste
-> back here to calibrate `cluster/fvs_array.sbatch` defaults. The probe is
-> cluster-neutral — it works equally on Hellgate or on GSCC (see below).
-
-> **Two UM clusters, not one.** UM operates **two** research clusters; this
-> doc targets **Hellgate** (the older Beowulf-architecture HPC system, BeeGFS
-> 800 TB). The newer **GSCC** (*Griz Shared Computing Cluster*,
-> [`login.gscc.umt.edu`](https://docs.gscc.umt.edu/), 2019 NSF CC* grant,
-> ~1 PB storage, compute + GPU) is a separate system with a different docs
-> site and storage layout (per-user Home / Scratch / Project). The probe
-> script handles either; if the lecturer ends up on GSCC instead of Hellgate
-> the cluster-specifics below need updating (storage paths, account/QOS),
-> but the batch runner itself is portable.
+> back here to calibrate `cluster/fvs_array.sbatch` defaults.
 
 > **Prior art search (2026-05-30): none.** No other public FVS-on-HPC effort
 > turned up in a focused scout (GitHub code/repo search, web search) — closest
@@ -124,7 +113,7 @@ The concrete scripts live in [`cluster/`](../cluster/) and are **manifest-driven
 
 - [`cluster/build_sif.sh`](../cluster/build_sif.sh) — convert the FVS OCI image to a `.sif`.
 - [`cluster/fvs_array.sbatch`](../cluster/fvs_array.sbatch) — the SLURM array job.
-- [`cluster/fvs_run_one.sh`](../cluster/fvs_run_one.sh) — the per-task unit: make an isolated run dir, stage shared inputs, run `FVS<variant>` on the keyword filename via stdin (`apptainer exec` if `SIF` is set, else the native binary).
+- [`cluster/fvs_run_one.sh`](../cluster/fvs_run_one.sh) — the per-task unit: make an isolated run dir, stage shared inputs, run `FVS<variant> --keywordfile=<key>` (`apptainer exec` if `SIF` is set, else the native binary).
 - [`cluster/run_local.sh`](../cluster/run_local.sh) — run the same batch with **no scheduler/container** against a native binary (testing / non-HPC machines).
 
 Full how-to in [`cluster/README.md`](../cluster/README.md). The essentials:
@@ -160,9 +149,6 @@ The first-session script [`cluster/hellgate_probe.sh`](../cluster/hellgate_probe
 answers these mechanically; the list below is what we expect its report to
 populate.
 
-- **Cluster identity** — confirm we're on `hellgate.rci.umt.edu` (this doc)
-  vs. `login.gscc.umt.edu` (GSCC); they're different machines with different
-  layouts.
 - **Partitions & limits** — names, default/max walltime, cores/mem per node,
   array-size and concurrent-task caps (`sinfo`, `scontrol show config`).
 - **Network egress** — can the login node reach `ghcr.io` / Docker Hub? If yes,
@@ -171,11 +157,10 @@ populate.
   describe fakeroot as "available", but per-account.)
 - **Modules** — is `apptainer` on `PATH` by default or behind `module load`?
   Is R available for keyword generation directly on the cluster?
-- **Storage** — actual mount paths and per-area quotas. On Hellgate the
-  user-facing layer is BeeGFS (per UM RCI's Hellgate storage page and the
-  Goodlab user notes); on GSCC it's Home / Scratch / Project. Confirm which
-  applies and whether to publish the SIF to a shared `Containers` area for
-  other users.
+- **Storage** — actual BeeGFS mount paths and per-area quotas (per UM RCI's
+  Hellgate storage page and the Goodlab user notes the user-facing layer is
+  BeeGFS, ~800 TB). Whether to publish the SIF to a shared `Containers`
+  area for other users.
 - **Account / QOS** — `sacctmgr` association for our account; the sbatch
   template will need `--account=<name>`.
 - **FVS CLI path in the image** — confirm `FVS<variant>` is on `PATH` (and the
