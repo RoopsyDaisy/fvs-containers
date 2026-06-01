@@ -32,12 +32,11 @@ keyword file you hand it. This repo turns that engine into a usable toolchain:
 - **A point-and-click WebGUI** — FVSOnline (`fvsOL`) + R/Shiny layered on the
   engine, with the full R dependency set pinned (`renv` + a dated snapshot) for
   reproducibility. The base image has none of this.
-- **Run-at-scale on HPC** — an Apptainer + SLURM batch runner for many keyword
-  files, plus an **R-enabled** engine image so keyword generation and rFVS-driven
-  runs work *on the cluster*, not just the bare CLI.
-- **R workflows** — generate keyword files from inventory data
-  (`rFVS::fvsMakeKeyFile`) and drive FVS cycle-by-cycle from R (`fvsInteractRun`).
-  See [scripts/r_workflow/](scripts/r_workflow/).
+- **An R-enabled engine** — the engine image carries R + rFVS, so keyword
+  generation and rFVS-driven runs work *on the cluster*, not just the bare CLI.
+  The HPC batch runner and the R keyword-file workflows live in the companion
+  repo **[fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit)**, which
+  runs against the image this repo publishes.
 - **A reproducible, patchable build** — rebuild the *same* engine + R stack from
   pinned source (or base off the prebuilt image via a build flag), rather than
   depending on an opaque artifact.
@@ -71,8 +70,9 @@ podman run --rm -v "$PWD:/work" fvs-engine:ie FVSie --keywordfile=mykeys.key
 
 ## The cluster (big simulation campaigns)
 
-Convert the engine image to an Apptainer `.sif` and fan runs out with a SLURM
-array job. See [cluster/README.md](cluster/README.md).
+Pull the published engine image to an Apptainer `.sif` and fan runs out with a
+SLURM array job — the runner, the R keyword generators, and the Hellgate runbook
+are in **[fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit)**.
 
 ## Developing this repo
 
@@ -99,11 +99,8 @@ vendor/fvs-build        Meson build overlay for compiling FVS (submodule)
 docker/Dockerfile       one multi-target build: fvs-r-base -> webgui, cluster
 scripts/build_fvs.sh    compile one FVS variant from source
 scripts/build_images.sh build + in-image smoke test (docker/podman)
-scripts/r_workflow/      R workflows: keyword generation (batch + sweep) + rFVS interactive
 scripts/smoke_test.R    regression gate (R env + FVS engine + rFVS load)
-tests/                  R test suite (unit + FVS engine integration); see tests/run_tests.R
-cluster/                Apptainer .sif build + SLURM array template
-data/                   inventory CSV inputs for the R workflows (see data/README.md)
+tests/                  in-image FVS engine integration test; see tests/run_tests.R
 docs/BUILD.md           how the build works (Meson fvs-build overlay + rFVS wiring)
 docs/WORKFLOW.md        branch/PR/test-gate flow (and how to reuse it elsewhere)
 ```

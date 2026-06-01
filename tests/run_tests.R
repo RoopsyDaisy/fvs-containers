@@ -2,11 +2,10 @@
 # R test harness for the FVS container repo.
 #
 # Plain base-R, matching scripts/smoke_test.R style (no testthat dependency, so
-# nothing new lands in renv.lock / the image). Runs two layers:
-#   - unit/        pure R, no engine: the data-path guard + the keyword writer.
-#                  Runs anywhere R is installed (lab PC, CI, in-image).
+# nothing new lands in renv.lock / the image). Validates the FVS *engine*:
 #   - integration/ runs the real FVS engine on the upstream iet01 'ie' example;
 #                  self-skips where FVS<variant> isn't on PATH/FVS_BIN.
+# (The R-workflow unit tests + their code moved to the fvs-hpc-toolkit repo.)
 #
 # Exits non-zero if any check fails. Baked into the deliverable image at
 # /opt/fvs/tests and run by scripts/build_images.sh, so the GHCR publish is
@@ -37,15 +36,11 @@ check <- function(name, expr) {
 skip <- function(name, why)
   cat(sprintf("CHECK %-30s SKIP (%s)\n", name, why))
 
-# Units under test (paths mirror a clone and the in-image layout).
-source(file.path(REPO_ROOT, "scripts", "r_workflow", "data_paths.R"))
-source(file.path(REPO_ROOT, "scripts", "reference_scripts",
-                 "fvs_keyword_file_functions.R"))
-
-# Run every test file (each calls check()/skip() at source time).
-test_files <- c(
-  list.files(file.path(TESTS_DIR, "unit"),        pattern = "\\.R$", full.names = TRUE),
-  list.files(file.path(TESTS_DIR, "integration"), pattern = "\\.R$", full.names = TRUE))
+# Run every test file (each calls check()/skip() at source time). This repo's
+# in-image suite validates the FVS *engine*; the R-workflow unit tests + the code
+# they exercise moved to fvs-hpc-toolkit (tested there against the published image).
+test_files <- list.files(file.path(TESTS_DIR, "integration"),
+                         pattern = "\\.R$", full.names = TRUE)
 for (f in test_files) {
   cat(sprintf("\n# %s\n", sub(paste0(REPO_ROOT, "/?"), "", f)))
   source(f)
