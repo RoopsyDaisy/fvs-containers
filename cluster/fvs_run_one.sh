@@ -27,6 +27,10 @@ VARIANT="${VARIANT:-ie}"
 PRG="FVS${VARIANT}"
 [ -n "${FVS_BIN:-}" ] && FVS_BIN="$(readlink -f "$FVS_BIN")"
 
+# Run dir is keyed on the keyword file's BASE name (no extension), which means
+# two manifest entries with the same base (e.g. `a/foo.key` and `b/foo.key`)
+# would target the same dir and the second would overwrite the first. Keep
+# basenames unique in your manifest, or rename before submitting.
 RUNDIR="${OUTROOT}/$(basename "${KEY%.*}")"
 mkdir -p "$RUNDIR"
 
@@ -45,12 +49,18 @@ cp "$KEY" "$RUNDIR/"
 tre="${KEY%.*}.tre"
 [ -f "$tre" ] && cp "$tre" "$RUNDIR/"
 
-cd "$RUNDIR"
+cd "$RUNDIR" || { echo "ERROR: cannot cd into $RUNDIR" >&2; exit 1; }
 base="$(basename "$KEY")"
 
 rc=0
 if [ -n "${SIF:-}" ]; then
-  apptainer exec "$SIF" "$PRG" --keywordfile="$base" </dev/null || rc=$?
+  # --cleanenv strips host env vars from the container so the run is reproducible
+  # across submit hosts (FVS is a Fortran binary that reads only its keyword file
+  # + cwd inputs; nothing in our flow needs $SLURM_* / $LD_LIBRARY_PATH / R-related
+  # vars inside the container). Apptainer still binds CWD by default, so the run
+  # dir + symlinked inputs remain visible. SIF runs read-only, so the container
+  # FS is untouched.
+  apptainer exec --cleanenv "$SIF" "$PRG" --keywordfile="$base" </dev/null || rc=$?
 else
   "${FVS_BIN:+$FVS_BIN/}$PRG" --keywordfile="$base" </dev/null || rc=$?
 fi
