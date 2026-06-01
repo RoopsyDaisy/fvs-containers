@@ -48,25 +48,77 @@ or a reproducible build, that's the gap this repo fills.
 
 ## The WebGUI (foresters)
 
-A familiar point-and-click FVSOnline interface, with no local R, FVS, or Fortran
-install required.
+A familiar point-and-click FVSOnline interface in your browser — **no local R,
+FVS, or Fortran install**. You only need a container runtime; the prebuilt image
+is *pulled* from GitHub Container Registry, not built.
+
+**Requirements (any OS):** a container runtime (Docker Desktop, OrbStack, or
+Podman) + a few GB of free disk for the image. The commands use `docker`; if you
+installed Podman, just replace `docker` with `podman`. The container works in
+`/work`, so mount a host folder there to keep your projects/outputs.
+
+### macOS
+1. Install **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** or
+   **[OrbStack](https://orbstack.dev)**, and open it (the runtime must be running).
+2. In **Terminal**:
+   ```bash
+   docker pull ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   mkdir -p ~/fvs-projects
+   docker run --rm -p 3838:3838 -v "$HOME/fvs-projects:/work" ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   ```
+3. Open **<http://localhost:3838>**. Stop it with **Ctrl-C** in Terminal.
+
+### Windows
+1. Install **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**
+   (accept the WSL 2 backend) and open it.
+2. In **PowerShell**:
+   ```powershell
+   docker pull ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   mkdir $HOME\fvs-projects -Force
+   docker run --rm -p 3838:3838 -v "${HOME}\fvs-projects:/work" ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   ```
+3. Open **<http://localhost:3838>**. Stop it with **Ctrl-C**.
+
+### Linux
+1. Install **[Docker](https://docs.docker.com/engine/install/)** or Podman
+   (`sudo apt install podman` / `sudo dnf install podman`).
+2. ```bash
+   docker pull ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   mkdir -p ~/fvs-projects
+   docker run --rm -p 3838:3838 -v "$HOME/fvs-projects:/work" ghcr.io/roopsydaisy/fvs-containers-webgui:ie
+   ```
+   On **SELinux** systems (Fedora/RHEL) add `:z` to the mount: `-v "$HOME/fvs-projects:/work:z"`.
+3. Open **<http://localhost:3838>**.
+
+> **Notes.** The first `pull` downloads a few GB and can take a few minutes; later
+> runs are instant. If port 3838 is busy, map another: `-p 8080:3838`, then open
+> `http://localhost:8080`. If `docker pull` fails with `unauthorized`/`denied`,
+> the GHCR package isn't public yet — make `fvs-containers-webgui` public in the
+> repo's **Packages** settings, or `docker login ghcr.io` with a GitHub token
+> (`read:packages` scope).
+
+<details><summary><b>Build it yourself (maintainers)</b></summary>
+
+To build the image from source instead of pulling (e.g. for a new FVS variant):
 
 ```bash
 podman build -f docker/Dockerfile --target webgui -t fvs-webgui:ie --build-arg FVS_VARIANT=ie .
 podman run --rm -p 3838:3838 -v "$PWD/myproject:/work" fvs-webgui:ie
-# then open http://localhost:3838
 ```
-
-On **macOS**, run the same image via Docker Desktop or OrbStack — the container's
-port 3838 is forwarded to the Mac, so you just open the URL in your browser.
+</details>
 
 ## The command line (scripted runs)
 
+Pull the engine image and run a keyword file by hand (no build):
+
 ```bash
-podman build -f docker/Dockerfile --target cluster -t fvs-engine:ie --build-arg FVS_VARIANT=ie .
-podman run --rm -v "$PWD:/work" fvs-engine:ie FVSie --keywordfile=mykeys.key
+docker pull ghcr.io/roopsydaisy/fvs-containers-engine:ie
+docker run --rm -v "$PWD:/work" -w /work ghcr.io/roopsydaisy/fvs-containers-engine:ie FVSie --keywordfile=mykeys.key
 # FVS writes FVSOut.db and report files next to your keyword file
 ```
+
+For many keyword files in parallel on HPC, use the cluster runner in
+[fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit).
 
 ## The cluster (big simulation campaigns)
 
