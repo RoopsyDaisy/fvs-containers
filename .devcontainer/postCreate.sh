@@ -36,6 +36,20 @@ done
 echo ">> Smoke test"
 Rscript scripts/smoke_test.R
 
+# Install the local lint gate (the same hooks lint.yaml runs in CI: actionlint,
+# hadolint, gitleaks). This means `git commit` runs them automatically, so the
+# class of bug that used to escape to CI (broken workflow YAML, stray secrets,
+# Dockerfile lints) gets caught at commit time. UPSTREAM_REVIEW.md M4.
+# Non-fatal: a one-off network blip should not block devcontainer startup --
+# the dev can re-run `pre-commit install` later.
+if command -v pre-commit >/dev/null 2>&1; then
+  echo ">> Installing pre-commit hooks"
+  pre-commit install --install-hooks || echo "   pre-commit install failed (non-fatal)"
+else
+  echo ">> Note: pre-commit not on PATH; skipping hook install."
+  echo "   Install with: pipx install pre-commit && pre-commit install"
+fi
+
 cat <<EOF
 
 FVS is built in ${BIN_DIR} (variant ${VARIANT}).

@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgfortran5 libquadmath0 libstdc++6 \
         # dev conveniences
         sudo curl rsync openssh-client less nano \
+        # local lint gate (postCreate.sh runs `pre-commit install` so the same
+        # hooks lint.yaml runs in CI fire on each git commit; see UPSTREAM_REVIEW.md M4)
+        pre-commit \
         # native deps for the renv-managed fvsOL R package set
         libcairo2-dev libfreetype6-dev libpng-dev libxml2-dev libssl-dev \
         libgl1-mesa-dev libglu1-mesa-dev libicu-dev libuv1-dev zlib1g-dev \
