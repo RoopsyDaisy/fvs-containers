@@ -17,9 +17,17 @@ context.
 > - **Known open gap (H1 in `docs/ASSESSMENT.md`):** the R workflows read
 >   `data/*.csv` inventory inputs that are **not committed** (gitignored), so a
 >   fresh clone can't run them until the fixture is added — see `data/README.md`.
-> - **Test layer + workflow added:** `tests/run_tests.R` (unit + FVS engine
->   integration) is baked into the images and gates CI **and** publish; the
->   branch/PR/test-gate flow is in `docs/WORKFLOW.md`.
+> - **Test layer + workflow added:** `tests/run_tests.R` (FVS engine integration)
+>   is baked into the images and gates CI **and** publish; the branch/PR/test-gate
+>   flow is in `docs/WORKFLOW.md`.
+> - **Repo split (2026-06):** the HPC batch runner (`cluster/`), the R keyword
+>   workflows (`scripts/r_workflow/` + `scripts/reference_scripts/`), and the
+>   Hellgate docs moved to a standalone companion repo,
+>   **[fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit)**, which
+>   runs against the engine image this repo publishes. This repo now builds +
+>   publishes the image (and validates the engine); the toolkit owns the workflow.
+>   The unit tests moved with their code; the in-image suite is engine-only.
+>   References to `cluster/` / `scripts/r_workflow/` further below are historical.
 > See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is

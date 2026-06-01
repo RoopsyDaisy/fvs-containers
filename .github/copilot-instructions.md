@@ -21,15 +21,15 @@
 - **Regression gate:** `Rscript scripts/smoke_test.R` (R env + FVS engine +
   rFVS `.so` load; self-skips the fvsOL guards in the cluster image).
 - **WebGUI:** `bash scripts/run_webgui.sh` (port 3838).
-- **R workflows:** `scripts/r_workflow/` (batch keyword generation + rFVS
-  interactive); see `scripts/r_workflow/README.md`. They read inventory CSVs from
-  `data/` — see `data/README.md`.
-- **HPC batch:** `cluster/` (SLURM array + Apptainer); see `cluster/README.md`.
+- **R workflows + HPC batch moved out:** the R keyword generators and the SLURM +
+  Apptainer batch runner now live in the companion repo
+  [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit), which runs
+  against the engine image this repo publishes. This repo builds + publishes the
+  image and validates the **engine** (`tests/run_tests.R`, integration only).
 
 ## Coding patterns & conventions
 - Shell: `set -euo pipefail`, resolve paths with `readlink -f`, fail loudly with
-  actionable messages. The per-task runner `cluster/fvs_run_one.sh` is shared by
-  the SLURM job and `run_local.sh` — keep the two paths identical.
+  actionable messages (see `scripts/*.sh`).
 - R: base-R style, env-var-configurable, **reuse FVS's own helpers**
   (`rFVS::fvsMakeKeyFile`, `fvsInteractRun`) rather than reinventing them.
 - Run FVS via `FVS<variant> --keywordfile=<name>` (works for both database-style
