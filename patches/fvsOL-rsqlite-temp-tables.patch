@@ -1,3 +1,47 @@
+diff --git a/fvsOL/R/externalCallable.R b/fvsOL/R/externalCallable.R
+index 927827e..e5920cd 100644
+--- a/fvsOL/R/externalCallable.R
++++ b/fvsOL/R/externalCallable.R
+@@ -71,7 +71,7 @@ extnMakeRun <- function (prjDir=getwd(),title=NULL,standIDs=NULL,
+   dbExecute(dbcon,'drop table if exists temp.Stds')
+   qry = paste0("select ",paste(fields,collapse=",")," from ",stdInit, 
+     ' where lower(variant) like "%',tolower(variant),'%"')
+-  dbWriteTable(dbcon,DBI::SQL("temp.Stds"),data.frame(SelStds = standIDs))
++  dbWriteTable(dbcon,"Stds",data.frame(SelStds = standIDs),temporary=TRUE,overwrite=TRUE)
+   qry = paste0(qry," and ",sidid," in (select SelStds from temp.Stds)")
+   
+   fvsInit = try(dbGetQuery(dbcon,qry))
+@@ -847,7 +847,7 @@ extnAddStands <- function(prjDir=getwd(),runUUID,stands,
+             unlist(lapply(fvsRun$stands,function(x) x$sid))))
+   if (nrow(getStds) == 0) return(nadd)
+     
+-  dbWriteTable(dbcon,name=DBI::SQL("temp.getStds"),value=getStds,overwrite=TRUE)
++  dbWriteTable(dbcon,name="getStds",value=getStds,temporary=TRUE,overwrite=TRUE)
+   variant = substring(fvsRun$FVSpgm,4)
+   dbExecute(dbcon,'drop table if exists temp.Stds')
+   qry = paste0("select ",paste(fields,collapse=",")," from ",stdInit, 
+diff --git a/fvsOL/R/fvsRunUtilities.R b/fvsOL/R/fvsRunUtilities.R
+index f6d898a..5b78f90 100644
+--- a/fvsOL/R/fvsRunUtilities.R
++++ b/fvsOL/R/fvsRunUtilities.R
+@@ -1339,7 +1339,7 @@ cat ("globals$fvsRun$refreshDB=",globals$fvsRun$refreshDB,"\n")
+       dbExecute(dbGlb$dbIcon,'drop table if exists temp.Stds') 
+       if (length(input$inStds))
+       {
+-        dbWriteTable(dbGlb$dbIcon,DBI::SQL("temp.Stds"),data.frame(SelStds = input$inStds))
++        dbWriteTable(dbGlb$dbIcon,"Stds",data.frame(SelStds = input$inStds),temporary=TRUE,overwrite=TRUE)
+       } else return()
+     } else {
+       # use if inAddGrp
+@@ -1356,7 +1356,7 @@ cat ("globals$fvsRun$refreshDB=",globals$fvsRun$refreshDB,"\n")
+       } 
+       if (length(stds) == 0) return()  
+       dbExecute(dbGlb$dbIcon,'drop table if exists temp.Stds') 
+-      dbWriteTable(dbGlb$dbIcon,DBI::SQL("temp.Stds"),data.frame(SelStds = stds))
++      dbWriteTable(dbGlb$dbIcon,"Stds",data.frame(SelStds = stds),temporary=TRUE,overwrite=TRUE)
+     }
+     qry = paste0('select ',paste0(fields,collapse=","),' from ',stdInit,
+                  ' where ',sidid,' in (select SelStds from temp.Stds)')
 diff --git a/fvsOL/R/server.R b/fvsOL/R/server.R
 index 584f523..559c17a 100644
 --- a/fvsOL/R/server.R
@@ -56,3 +100,16 @@ index 584f523..559c17a 100644
          sid = if (inInit %in% c("FVS_PlotInit","FVS_PlotInit_Plot"))
                 "StandPlot_ID" else "Stand_ID"
          qry = paste0("select distinct ",sid," as Stand_ID,Latitude,Longitude from ",inInit,
+diff --git a/fvsOL/R/writeKeyFile.R b/fvsOL/R/writeKeyFile.R
+index 30b92e5..2689056 100644
+--- a/fvsOL/R/writeKeyFile.R
++++ b/fvsOL/R/writeKeyFile.R
+@@ -433,7 +433,7 @@ writeKeyFile <- function (globals,dbIcon,keyFileName=NULL,verbose=TRUE)
+   if (length(stds)==0) return(paste0("No stands to process. Run =",
+            globals$fvsRun$title," uuid=",globals$fvsRun$uuid))
+   dbExecute(dbIcon,'drop table if exists temp.RunStds')                   
+-  dbWriteTable(dbIcon,DBI::SQL("temp.RunStds"),data.frame(RunStds = stds))
++  dbWriteTable(dbIcon,"RunStds",data.frame(RunStds = stds),temporary=TRUE,overwrite=TRUE)
+  
+   # get the preferred ids depending on the table that was used to build the run
+   intable=toupper(globals$fvsRun$refreshDB)
