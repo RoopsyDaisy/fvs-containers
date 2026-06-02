@@ -95,7 +95,10 @@ installed Podman, just replace `docker` with `podman`. The container works in
 > `http://localhost:8080`. If `docker pull` fails with `unauthorized`/`denied`,
 > the GHCR package isn't public yet — make `fvs-containers-webgui` public in the
 > repo's **Packages** settings, or `docker login ghcr.io` with a GitHub token
-> (`read:packages` scope).
+> (`read:packages` scope). On **Apple Silicon Macs** (M1–M4) the plain commands
+> above work as-is — Docker emulates the `amd64` image. You'll see a harmless
+> `platform … does not match` warning; add `--platform linux/amd64` to silence it.
+> The same applies to the engine image below.
 
 <details><summary><b>Build it yourself (maintainers)</b></summary>
 
@@ -116,6 +119,13 @@ docker pull ghcr.io/roopsydaisy/fvs-containers-engine:ie
 docker run --rm -v "$PWD:/work" -w /work ghcr.io/roopsydaisy/fvs-containers-engine:ie FVSie --keywordfile=mykeys.key
 # FVS writes FVSOut.db and report files next to your keyword file
 ```
+
+> **Already pulled the WebGUI image?** It's a superset of the engine image — the same
+> `FVSie` CLI, plus R and rFVS, are on `PATH` inside it. Swap `-engine` for `-webgui`
+> in the commands above to run keyword files from it (or add `-it` and run `bash`
+> instead of the `FVSie` line to explore interactively) — no second pull needed. For
+> the full R/rFVS keyword-generation and batch workflows, see
+> [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit).
 
 For many keyword files in parallel on HPC, use the cluster runner in
 [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit).
