@@ -47,6 +47,11 @@ context.
 >   never reports → the PR sticks at "Expected — Waiting."** Admin-merge docs-only
 >   PRs, or make the required check always-report (drop `paths-ignore`, detect
 >   docs-only inside the job, skip the build but finish green). Not yet fixed.
+> - **Post-ship review (2026-06-02):** an independent review pass after the first
+>   users got the images. Findings + the now-applied **fvsOL XLSX-export fix** (the
+>   12th `DBI::SQL()`-name `dbWriteTable` site — `patches/` now covers it; **GUI
+>   click-through still to confirm**) are in **`docs/REVIEW_2026-06-02.md`**. Read
+>   it before the fvsOL work.
 > See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is
@@ -118,10 +123,11 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
   `/opt/fvs-bundle`, not beside the CLI) both pass the smoke test incl. the
   `rFVS/fvsLoad` embedder guard. `source` stays canonical (reproducible, no
   registry dependency, patchable); `ghcr` is the faster no-compile alternative.
-- **CI** (`.github/workflows/ci.yaml`): a `python` job (uv sync + pytest) and an
-  `images` job that runs `scripts/build_images.sh` — so "CI green" == "builds +
-  works on the lab PC". The `images` path is now proven locally; the GitHub
-  Actions run itself is unverified until first pushed.
+- **CI** (`.github/workflows/ci.yaml`): an `images` job that runs
+  `scripts/build_images.sh` — so "CI green" == "builds + works on the lab PC".
+  (The old `python` job was dropped when the Python tooling was pruned; static
+  analysis now lives in the separate `.github/workflows/lint.yaml`.) Publishing
+  is gated the same way by `publish.yaml`.
 
 ## Key files
 
@@ -134,10 +140,9 @@ All committed on `fvs-container-build` (`0284894` → `8dbf567`):
 | fvsOL/rFVS patches | `patches/*.patch` + `scripts/apply_fvsol_patch.sh` |
 | FVS build | `scripts/build_fvs.sh` (wraps `vendor/fvs-build` Meson overlay) |
 | WebGUI launch | `scripts/run_webgui.sh`, `docker/webgui-app.R` |
-| Regression gate | `scripts/smoke_test.R` |
-| HPC batch | `cluster/` (`fvs_run_one.sh`, `fvs_array.sbatch`, `run_local.sh`, `build_sif.sh`, `README.md`) |
-| R workflows | `scripts/r_workflow/` — batch track (`build_input_db.R` + `generate_keyfiles.R` → `cluster/`) and interactive track (`project_stand.R`, rFVS); reuses the course reference `scripts/reference_scripts/*.R` |
-| Docs | `docs/HELLGATE_FVS.md` (HPC approach), this file |
+| Regression gate | `scripts/smoke_test.R`, `tests/run_tests.R` (in-image engine integration) |
+| HPC batch + R workflows | **moved to [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit)** (the `cluster/` runners, `scripts/r_workflow/`, and the Hellgate runbook live there now — see the repo-split banner at the top) |
+| Docs | `docs/BUILD.md` (build), `docs/WORKFLOW.md` (branch/PR/gate flow), `docs/REVIEW_2026-06-02.md` (post-ship review), this file |
 | Submodules | `vendor/fvs` (USDA FVS source), `vendor/fvs-build` (Meson build), `vendor/fvs-interface` (rFVS + fvsOL) |
 
 ## Container architecture & where builds run (end state)

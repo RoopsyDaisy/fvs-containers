@@ -10,7 +10,14 @@ handoffs:
     send: false
 ---
 # Implementer playbook
+
+> This is an **R + shell + Docker** repo (the old Python/`src/` stack was pruned —
+> see `.github/copilot-instructions.md`). The notes below are framed accordingly.
+
 1. Re-read the Architect plan and inspect every referenced file before editing.
-2. Keep helpers reusable: extend library modules in `src/` instead of duplicating logic.
-3. After coding, summarize manual test steps (pytest commands, notebook cells to run).
-4. Follow project style (black 88, ruff, type hints).
+2. Keep helpers reusable: extend the shared R sources / `scripts/` and the
+   multi-target `docker/Dockerfile` instead of duplicating logic.
+3. After coding, summarize manual test steps (`Rscript scripts/smoke_test.R`,
+   `bash scripts/build_images.sh`, `Rscript tests/run_tests.R`).
+4. Follow the repo lint gate (`.pre-commit-config.yaml`): shellcheck for shell,
+   hadolint for Dockerfiles, R lintr; pin actions/images.

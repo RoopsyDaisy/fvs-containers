@@ -41,15 +41,16 @@ for p in "${patches[@]}"; do
   fi
 done
 
-# Completeness guard for fvsOL-rsqlite-temp-tables.patch: the schema-qualified
-# dbWriteTable(con, DBI::SQL("temp.<name>"), ...) form throws "Named parameters
-# not used in query" on RSQLite >= 3 (see patches/README.md). After patching, no
-# such literal site may remain in fvsOL/R. (The dynamic DBI::SQL(<var>) site and
-# the "temp.FVS_ClimAttrs" plain-string site are different cases, out of scope,
-# and intentionally not matched.)
+# Completeness guard for fvsOL-rsqlite-temp-tables.patch: passing a DBI::SQL()
+# object as the dbWriteTable `name` throws "Named parameters not used in query"
+# on RSQLite >= 3 (see patches/README.md) -- both the literal DBI::SQL("temp.X")
+# form (11 sites) and the dynamic DBI::SQL(<var>) form (the XLSX-export site,
+# server.R). The patch converts ALL of them, so after patching no DBI::SQL-as-name
+# write may remain in fvsOL/R. (The plain-string "temp.FVS_ClimAttrs" site is a
+# different case -- not DBI::SQL -- so it doesn't match; tracked separately.)
 if [ -d "$SUB/fvsOL/R" ]; then
-  if grep -rnE 'dbWriteTable\([^,]+,[[:space:]]*(name=)?DBI::SQL\("temp\.' "$SUB/fvsOL/R"; then
-    echo "   ERROR: un-converted DBI::SQL(\"temp.X\") dbWriteTable site(s) remain (above)" >&2
+  if grep -rnE 'dbWriteTable\([^,]+,[[:space:]]*(name[[:space:]]*=[[:space:]]*)?DBI::SQL\(' "$SUB/fvsOL/R"; then
+    echo "   ERROR: un-converted DBI::SQL(...) dbWriteTable name site(s) remain (above)" >&2
     exit 1
   fi
 fi

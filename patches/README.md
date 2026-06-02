@@ -26,22 +26,24 @@ Pinned environment (Posit Package Manager snapshot **2026-05-27**, `renv.lock`):
 
 | Patch | Fixes | Reproduces on pinned env? | Upstream |
 |---|---|---|---|
-| `fvsOL-rsqlite-temp-tables.patch` | RSQLite ≥3 rejects `dbWriteTable(con, DBI::SQL("temp.X"), …)` | ✅ verbatim: `Named parameters not used in query: name` | PR open (reframe); now covers **all 11** sites |
+| `fvsOL-rsqlite-temp-tables.patch` | RSQLite ≥3 rejects any `DBI::SQL()` name in `dbWriteTable` | ✅ verbatim: `Named parameters not used in query: name` | PR open (reframe); now covers **all 12** sites (11 `temp.X` literals + the XLSX-export dynamic name) |
 | `rFVS-encoding.patch` | roxygen2 8 doc-regen warning | ✅ `✖ roxygen2 requires "Encoding: UTF-8" / Current encoding is NA` | PR open (reframe) |
 | `fvsOL-staged-install.patch` | (historical) staged-install path-record error | ❌ did **not** reproduce on R 4.6.0 | local-only; **not** upstreamed |
 
 ## `fvsOL-rsqlite-temp-tables.patch`
 
-**What:** converts `dbWriteTable(con, DBI::SQL("temp.X"), df)` →
-`dbWriteTable(con, "X", df, temporary=TRUE, overwrite=TRUE)` at **all 11**
-schema-qualified temp-table write sites in fvsOL:
+**What:** converts every `dbWriteTable(con, DBI::SQL(<name>), df)` →
+`dbWriteTable(con, "<name>", df, temporary=TRUE, overwrite=TRUE)` at **all 12**
+sites in fvsOL that pass a `DBI::SQL()` object as the table name:
 
 - `server.R` (6): `temp.Grps` ×2, `temp.SGrps`, `temp.SEGrps`, `temp.mapsCases`, `temp.uidsToGet`
 - `writeKeyFile.R` (1): `temp.RunStds` — **keyword-file generation path**
 - `externalCallable.R` (2): `temp.Stds`, `temp.getStds`
 - `fvsRunUtilities.R` (2): `temp.Stds` ×2
+- `server.R` (1, the **XLSX-export** path, `output$dlFVSOutxlsx`): `DBI::SQL(casesToGet)`
+  — a *dynamic*, attached-schema name (see "XLSX-export site" below)
 
-Each write keeps its downstream `temp.X` query references intact (the
+Each `temp.*` write keeps its downstream `temp.X` query references intact (the
 `temporary=TRUE` form lands the table in the temp schema, still queryable as
 `temp.X`).
 
@@ -62,17 +64,35 @@ A genuine runtime bug (bare `:memory:`, stock packages), not container-specific.
 guard 2). The other 5 were **live breakages in the container** —
 `writeKeyFile.R:436` throws on any real keyword-generation / simulation run —
 masked only because no full GUI run had been done and guard 2 exercises the
-pattern in isolation, never these actual call sites (false green). All 11 are
-now converted, and a completeness guard in `apply_fvsol_patch.sh` fails the
-build if any `DBI::SQL("temp.<literal>")` write remains.
+pattern in isolation, never these actual call sites (false green).
 
-**Intentionally NOT converted (different cases — flag before touching):**
+**XLSX-export site (the 12th, added 2026-06-02 — review finding):** the
+"Output .xlsx for current run" download handler (`server.R`, `output$dlFVSOutxlsx`,
+button at `fvsOL/R/ui.R`) builds a `CaseID` filter table with
+`dbWriteTable(…, name=DBI::SQL(casesToGet), …)`. Same error class (a `DBI::SQL()`
+name) → same `Named parameters not used in query` crash the moment a user exports
+to Excel; it also carried a pre-existing `overwirte=` typo (so overwrite never
+applied). It was a *dynamic* name (`casesToGet = "tmp….casesToGet"`, an
+attached-`:memory:`-db alias), so it didn't match the `"temp.` literal scan and was
+initially scoped out. The attached db was used **only** for that one table (attached
+then detached a few lines later), so the fix drops the attach/detach and writes a
+plain **temporary table** instead — the same `temporary=TRUE` pattern as the other
+11 (already proven on the pinned env by `smoke_test.R` guard 2), so no new
+pinned-env risk; the `overwirte` typo is fixed in passing. Unit-level fix is solid;
+the remaining confirmation is a GUI click-through (build the webgui image, run a
+projection, click the button — no "Named parameters…" error, a non-empty `.xlsx`).
 
-- `server.R:4829` `dbWriteTable(…, DBI::SQL(casesToGet), …)` — *dynamic* name,
-  not a `temp.` literal; also carries a pre-existing `overwirte=` typo.
+All 12 are now converted, and the completeness guard in `apply_fvsol_patch.sh`
+fails the build if **any** `DBI::SQL()`-as-name `dbWriteTable` remains (broadened
+from the old `"temp.`-literal-only scan, so it now also catches a regression of
+the dynamic XLSX form).
+
+**Intentionally NOT converted (different case — flag before touching):**
+
 - `server.R:7712` `dbWriteTable(…, "temp.FVS_ClimAttrs", …)` — plain string
   (creates a dot-named table in `main`, not the temp schema); a separate latent
-  issue, not this error class.
+  issue, not this error class (so the guard, which matches only `DBI::SQL()`
+  names, doesn't flag it).
 
 **Upstream:** PR open from `RoopsyDaisy:upstream-pr/fvsol-rsqlite-temp-tables`
 (USDA repo). Reframe the body around the real error + pinned versions.
