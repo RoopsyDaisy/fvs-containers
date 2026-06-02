@@ -167,8 +167,9 @@ LABEL org.opencontainers.image.title="fvs-webgui" \
 # (in-app help). roxygenize/install do NOT produce them, so generate them first or
 # the GUI's keyword-component editor + help break at runtime (data(prms) "not
 # found"). The smoke test's fvsOL/data-artifacts guard fails the build otherwise.
-RUN cd /src/fvs-interface/fvsOL \
- && Rscript parms/mkpkeys.R \
+# (WORKDIR, not `cd`, so hadolint DL3003 stays happy; reset to /work below.)
+WORKDIR /src/fvs-interface/fvsOL
+RUN Rscript parms/mkpkeys.R \
  && Rscript inst/extdata/mkhelp.R \
  && R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
