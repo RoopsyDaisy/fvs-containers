@@ -169,11 +169,13 @@ docs/WORKFLOW.md        branch/PR/test-gate flow (and how to reuse it elsewhere)
 
 ## Testing & contributing
 
-`tests/run_tests.R` runs pure-R unit tests (the `data/` input guard + the
-keyword-file writer) and an engine integration test (runs FVS on the bundled
+`tests/run_tests.R` runs an engine integration test (runs FVS on the bundled
 `iet01` `ie` example). It's baked into the images and invoked by
 `scripts/build_images.sh`, so the same suite gates both CI and the GHCR publish.
-The branch → PR → green-CI → merge flow is in [docs/WORKFLOW.md](docs/WORKFLOW.md).
+(The pure-R unit tests — the `data/` input guard + the keyword-file writer —
+moved with their code to [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit),
+which runs them against the published image.) The branch → PR → green-CI → merge
+flow is in [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
 ## License
 

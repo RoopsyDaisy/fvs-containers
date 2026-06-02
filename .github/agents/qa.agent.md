@@ -9,6 +9,13 @@ handoffs:
     send: false
 ---
 # QA playbook
-- Write pytest cases under `tests/`; prefer lightweight mocks over large data.
-- Validate notebooks by specifying which cells to rerun and expected outputs.
+
+> This is an **R + shell + Docker** repo (no Python/pytest/notebooks). Tests are
+> base-R harnesses run in-image; the build gates on them.
+
+- Extend the base-R harnesses (`tests/run_tests.R` engine integration,
+  `scripts/smoke_test.R` regression guards) — no testthat, to keep `renv.lock`
+  lean. Self-skip a guard where its dependency (e.g. fvsOL, the FVS binary) is absent.
+- Run the gate the build runs: `bash scripts/build_images.sh` (builds + smoke +
+  in-image `run_tests.R`); for a quick loop, `Rscript scripts/smoke_test.R`.
 - Capture gaps as actionable TODOs if they cannot be fixed immediately.

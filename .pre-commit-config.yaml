@@ -1,11 +1,12 @@
 # Static-analysis hooks for this repo (R + shell + Docker + GitHub Actions).
-# Run in CI by .github/workflows/lint.yaml (CI-only; not installed in the
-# devcontainer). To run locally if you want: `pipx install pre-commit &&
-# pre-commit run --all-files`.
+# Run in CI by .github/workflows/lint.yaml, and installed in the devcontainer by
+# .devcontainer/postCreate.sh (`pre-commit install`), so the same hooks fire at
+# `git commit` locally. To run by hand: `pre-commit run --all-files`.
 #
-# These are the BLOCKING hooks (a red here fails the lint gate). The advisory
-# tools (shellcheck, R lintr) run as a separate non-blocking job in lint.yaml
-# until their findings are triaged and ratcheted up to blocking.
+# These are the BLOCKING hooks (a red here fails the lint gate): actionlint,
+# hadolint, gitleaks, and shellcheck (shellcheck was promoted from advisory once
+# the repo was clean at the default severity). R lintr stays advisory — it runs
+# as a separate non-blocking job in lint.yaml until its findings are triaged.
 minimum_pre_commit_version: "3.0.0"
 exclude: '^vendor/'   # submodules carry upstream code we don't lint
 repos:
