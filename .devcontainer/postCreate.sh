@@ -29,6 +29,12 @@ echo ">> Installing rFVS and fvsOL from patched vendored source into the renv li
 BUILD_SRC="$(mktemp -d)"
 trap 'rm -rf "$BUILD_SRC"' EXIT
 cp -r vendor/fvs-interface/rFVS vendor/fvs-interface/fvsOL "$BUILD_SRC/"
+# fvsOL's keyword-parameter catalog (data/prms.RData) and in-app help
+# (data/fvsOnlineHelpRender.RData) are gitignored, makefile-generated data objects
+# that roxygenize/install do NOT produce. Generate them into the copy before
+# install or the GUI's keyword-component editor + help break at runtime
+# (data(prms) "not found"); the smoke test's fvsOL/data-artifacts guard enforces it.
+R -q -e "setwd('${BUILD_SRC}/fvsOL'); source('parms/mkpkeys.R'); source('inst/extdata/mkhelp.R')"
 for pkg in rFVS fvsOL; do
   R -q -e "roxygen2::roxygenize('${BUILD_SRC}/${pkg}'); renv::install('${BUILD_SRC}/${pkg}')"
 done

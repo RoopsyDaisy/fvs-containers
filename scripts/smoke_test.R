@@ -85,6 +85,24 @@ check("rsqlite/temp-write", {
   nrow(dbGetQuery(con, "select * from temp.Grps")) >= 0
 })
 
+# Guard 2b - fvsOL data artifacts (WebGUI only): prms (keyword-parameter catalog)
+# and fvsOnlineHelpRender (in-app help) are gitignored, makefile-generated data
+# objects (parms/mkpkeys.R, inst/extdata/mkhelp.R) that roxygenize/install do NOT
+# produce. A build that skips that generation ships a GUI whose keyword-component
+# editor + help break at runtime (data(prms) "not found"). treeforms is committed.
+# This guard fails the build if any are missing -- catching the class at CI time.
+if (have_fvsOL) check("fvsOL/data-artifacts", {
+  # Each .RData loads its own object (note: fvsOnlineHelpRender.RData -> `fvshelp`),
+  # so assert each dataset NAME loads *something*, not a fixed object name.
+  loads <- vapply(c("prms", "fvsOnlineHelpRender", "treeforms"), function(ds) {
+    e <- new.env()
+    suppressWarnings(utils::data(list = ds, package = "fvsOL", envir = e))
+    length(ls(e)) > 0L            # data() adds nothing if the .RData is absent
+  }, logical(1))
+  ep <- new.env(); suppressWarnings(utils::data(list = "prms", package = "fvsOL", envir = ep))
+  all(loads) && is.list(ep$prms) && length(ep$prms) > 0L
+})
+
 # Guard 3 - FVS engine present + version stamp: the FVS binary must be runnable
 # and report its build version, so a rebuild proves the engine is wired up and
 # records which version the WebGUI/cluster images carry (provenance + a check
