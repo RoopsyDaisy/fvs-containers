@@ -48,9 +48,10 @@ context.
 >   PRs, or make the required check always-report (drop `paths-ignore`, detect
 >   docs-only inside the job, skip the build but finish green). Not yet fixed.
 > - **Post-ship review (2026-06-02):** an independent review pass after the first
->   users got the images — findings + the **actionable fvsOL XLSX-export fix (needs
->   a lab-PC/pinned-env repro)** are in **`docs/REVIEW_2026-06-02.md`**. Read it
->   before the fvsOL work.
+>   users got the images. Findings + the now-applied **fvsOL XLSX-export fix** (the
+>   12th `DBI::SQL()`-name `dbWriteTable` site — `patches/` now covers it; **GUI
+>   click-through still to confirm**) are in **`docs/REVIEW_2026-06-02.md`**. Read
+>   it before the fvsOL work.
 > See `docs/ASSESSMENT.md` for the full review behind these corrections.
 
 ## What this project is

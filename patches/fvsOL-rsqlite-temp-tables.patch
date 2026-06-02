@@ -43,7 +43,7 @@ index f6d898a..5b78f90 100644
      qry = paste0('select ',paste0(fields,collapse=","),' from ',stdInit,
                   ' where ',sidid,' in (select SelStds from temp.Stds)')
 diff --git a/fvsOL/R/server.R b/fvsOL/R/server.R
-index 584f523..559c17a 100644
+index 584f523..85f0ccb 100644
 --- a/fvsOL/R/server.R
 +++ b/fvsOL/R/server.R
 @@ -2480,7 +2480,7 @@ cat ("in reloadStandSelection\n")
@@ -82,7 +82,29 @@ index 584f523..559c17a 100644
        sid = if (input$inTabs %in% c("FVS_PlotInit","FVS_PlotInit_Plot"))"StandPlot_ID" else "Stand_ID"
        stds = try(dbGetQuery(dbGlb$dbIcon,paste0('select distinct ',sid,' from temp.Grps ',
                        'where Grp in (select SelGrps from temp.SEGrps)')))
-@@ -5644,7 +5644,7 @@ cat ("mapDsRunList input$mapDsRunList=",input$mapDsRunList,"\n")
+@@ -4823,10 +4823,9 @@ cat ("in buildKeywords, oReopn=",oReopn," kwPname=",kwPname,"\n")
+              "where KeywordFile = '",globals$fvsRun$uuid,"';"))
+          if (nrow(cases) == 0) return()
+ cat ("download run as xlsx, ncases=",nrow(cases),"\n")
+-         tmp = paste0("tmp",gsub("-","",runuuid),Sys.getpid(),"genoutput")
+-         dbExecute(dbGlb$dbOcon,paste0("attach database ':memory:' as ",tmp))
+-         casesToGet = paste0(tmp,".casesToGet")
+-         dbWriteTable(dbGlb$dbOcon,name=DBI::SQL(casesToGet),value=cases,overwirte=TRUE)
++         casesToGet = "temp.casesToGet"
++         dbExecute(dbGlb$dbOcon,"drop table if exists temp.casesToGet")
++         dbWriteTable(dbGlb$dbOcon,"casesToGet",cases,temporary=TRUE,overwrite=TRUE)
+          out = list()
+          cmpYes = if ("CmpMetaData" %in% tabs) 
+          { 
+@@ -4845,7 +4844,6 @@ cat ("download run as xlsx, ncases=",nrow(cases),"\n")
+           out[[tab]] = dat
+ cat ("qry=",qry," class(dat)=",class(dat),"\n")
+          }
+-         dbExecute(dbGlb$dbOcon,paste0("detach database ",tmp,";"))
+          if (length(out)) write.xlsx(file=tf,out)
+        }, contentType=NULL)
+   ## dlPrjBackup
+@@ -5644,7 +5642,7 @@ cat ("mapDsRunList input$mapDsRunList=",input$mapDsRunList,"\n")
        # if there are reps (same stand more than once), just use the first rep, ignore the others
        cases = cases[!duplicated(cases$StandID),]
        dbExecute(dbGlb$dbOcon,"drop table if exists temp.mapsCases")
@@ -91,7 +113,7 @@ index 584f523..559c17a 100644
        tabs = setdiff(myListTables(dbGlb$dbOcon),
                       c("CmpSummary","FVS_Cases","CmpSummary_East"))
        tables = list()
-@@ -5794,7 +5794,7 @@ cat ("left to get: length(uidsToGet)=",length(uidsToGet),
+@@ -5794,7 +5792,7 @@ cat ("left to get: length(uidsToGet)=",length(uidsToGet),
          })
          if (is.null(inInit)) inInit = getTableName(dbGlb$dbIcon,"FVS_StandInit")
  cat ("mapDsRunList trying to use the table=",inInit,"\n")
