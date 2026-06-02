@@ -95,7 +95,10 @@ installed Podman, just replace `docker` with `podman`. The container works in
 > `http://localhost:8080`. If `docker pull` fails with `unauthorized`/`denied`,
 > the GHCR package isn't public yet — make `fvs-containers-webgui` public in the
 > repo's **Packages** settings, or `docker login ghcr.io` with a GitHub token
-> (`read:packages` scope).
+> (`read:packages` scope). On **Apple Silicon Macs** (M1–M4) the plain commands
+> above work as-is — Docker emulates the `amd64` image. You'll see a harmless
+> `platform … does not match` warning; add `--platform linux/amd64` to silence it.
+> The same applies to the engine image below.
 
 <details><summary><b>Build it yourself (maintainers)</b></summary>
 
