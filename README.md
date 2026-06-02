@@ -120,6 +120,13 @@ docker run --rm -v "$PWD:/work" -w /work ghcr.io/roopsydaisy/fvs-containers-engi
 # FVS writes FVSOut.db and report files next to your keyword file
 ```
 
+> **Already pulled the WebGUI image?** It's a superset of the engine image — the same
+> `FVSie` CLI, plus R and rFVS, are on `PATH` inside it. Swap `-engine` for `-webgui`
+> in the commands above to run keyword files from it (or add `-it` and run `bash`
+> instead of the `FVSie` line to explore interactively) — no second pull needed. For
+> the full R/rFVS keyword-generation and batch workflows, see
+> [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit).
+
 For many keyword files in parallel on HPC, use the cluster runner in
 [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit).
 
