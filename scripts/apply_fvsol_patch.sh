@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Apply the carried fvsOL source patches (patches/*.patch) to the fvs-interface
 # tree. These fixes adapt the vendored fvsOL to current CRAN package behaviour
-# (e.g. RSQLite temp-table writes); see the patch headers for details.
+# (e.g. RSQLite temp-table writes); see patches/README.md for each patch's
+# rationale, evidence, and upstream status.
 #
 # Idempotent: safe to run whether or not the patches are already present. A
 # bind-mounted dev workspace keeps them across rebuilds; a fresh checkout / CI /
@@ -39,3 +40,16 @@ for p in "${patches[@]}"; do
     echo "   applied:         $(basename "$p")"
   fi
 done
+
+# Completeness guard for fvsOL-rsqlite-temp-tables.patch: the schema-qualified
+# dbWriteTable(con, DBI::SQL("temp.<name>"), ...) form throws "Named parameters
+# not used in query" on RSQLite >= 3 (see patches/README.md). After patching, no
+# such literal site may remain in fvsOL/R. (The dynamic DBI::SQL(<var>) site and
+# the "temp.FVS_ClimAttrs" plain-string site are different cases, out of scope,
+# and intentionally not matched.)
+if [ -d "$SUB/fvsOL/R" ]; then
+  if grep -rnE 'dbWriteTable\([^,]+,[[:space:]]*(name=)?DBI::SQL\("temp\.' "$SUB/fvsOL/R"; then
+    echo "   ERROR: un-converted DBI::SQL(\"temp.X\") dbWriteTable site(s) remain (above)" >&2
+    exit 1
+  fi
+fi

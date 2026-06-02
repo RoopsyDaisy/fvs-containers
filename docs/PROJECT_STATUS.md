@@ -183,17 +183,23 @@ change. To update upstream: bump the submodule SHA, re-run the build, re-test th
 
 - **fvsOL ships incompatible with its contemporary CRAN packages** → pinning
   alone doesn't fix runtime breakage; source patches are also required.
-  (RSQLite 3.53.x rejects `dbWriteTable(conn, DBI::SQL("temp.X"), …)` → use
-  `temporary=TRUE`; fvsOL calls `fs::dir_exists` by bare name → `library(fs)`.)
+  (RSQLite 3.53.x rejects `dbWriteTable(conn, DBI::SQL("temp.X"), …)` with
+  "Named parameters not used in query" → use `temporary=TRUE` at **all 11**
+  fvsOL call sites, see `patches/README.md`; fvsOL calls `fs::dir_exists` by
+  bare name → `library(fs)`.)
 - **bspm must be disabled** for renv/install.packages in the r2u image (it hooks
   install and fails on missing D-Bus). Done by neutralizing `bspm::enable()` in
   `/etc/R/Rprofile.site`.
 - **renv.lock date must serve the locked versions.** The lock was hydrated from
   rolling-latest packages, so the P3M snapshot date has to be ≥ when those were
   published (hence 2026-05-27, not an older date) or a clean restore 404s.
-- **fvsOL needs `StagedInstall: no`** (it bakes an abs path during build, so R's
-  staged install fails). Only surfaces on a real `renv::install`, not when
-  hydrated/copied.
+- **fvsOL carries `StagedInstall: no`** as a conservative local-only patch. The
+  original 2026-05-28 build hit `ERROR: hard-coded installation path … use
+  --no-staged-install` during `renv::install`, but this **did not reproduce on
+  R 4.6.0** (faithful roxygenize + staged `R CMD INSTALL fvsOL` exits 0 and
+  passes the path-record check). Retained because it's harmless and matches the
+  original history; **not upstreamed** (no reproducible failure to file). See
+  `patches/README.md`.
 - **git identity is host-delegated**: VS Code copies the host (`~/.gitconfig`)
   into the container at creation. Now present in-container
   (`RoopsyDaisy <rupertwilliamsnz@gmail.com>`), so plain `git commit` works — no
