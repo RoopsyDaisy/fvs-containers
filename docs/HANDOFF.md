@@ -29,7 +29,9 @@ For the next Claude (fresh session, no memory of this work) and for the human
 
 1. **Hellgate validation** — the `.sif`-under-Apptainer + SLURM path is still
    un-tested on the cluster. Cluster access only; see the "[confirm on
-   cluster]" list in `docs/HELLGATE_FVS.md`.
+   cluster]" list in the
+   [fvs-hpc-toolkit](https://github.com/RoopsyDaisy/fvs-hpc-toolkit) repo's
+   `docs/HELLGATE.md` (the Hellgate workflow + docs migrated there).
 2. **Data fixture (H1)** — the R database workflows still need real/sample
    `data/FVS_Lubrecht_2023_*` CSVs (gitignored; contract documented in
    `data/README.md`). Deliberately not fabricated.

@@ -27,8 +27,9 @@ context.
 >   runs against the engine image this repo publishes. This repo now builds +
 >   publishes the image (and validates the engine); the toolkit owns the workflow.
 >   The unit tests moved with their code; the in-image suite is engine-only.
->   References to `cluster/` / `scripts/r_workflow/` further below are historical.
->   (The slim landed via **PR #16, merged to `main`**.) The toolkit is now
+>   References to `cluster/` / `scripts/r_workflow/` / `docs/HELLGATE_FVS.md`
+>   further below are historical — the Hellgate doc is now the toolkit's
+>   `docs/HELLGATE.md`. (The slim landed via **PR #16, merged to `main`**.) The toolkit is now
 >   organized around **three example workflows** — single-run, parallel-batch
 >   (incl. Monte Carlo sweep), and an rFVS-in-the-loop array — all verified
 >   locally; see its `AGENTS.md`.
