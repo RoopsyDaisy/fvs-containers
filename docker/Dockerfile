@@ -162,7 +162,16 @@ LABEL org.opencontainers.image.title="fvs-webgui" \
       org.fvscontainers.fvs.base="${FVS_BASE}" \
       org.fvscontainers.fvs.source-ref="${FVS_SOURCE_REF}" \
       org.fvscontainers.fvs.ghcr-tag="${FVS_TAG}"
-RUN R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
+# fvsOL ships two data objects its makefile generates from source and gitignores:
+# data/prms.RData (keyword-parameter catalog) and data/fvsOnlineHelpRender.RData
+# (in-app help). roxygenize/install do NOT produce them, so generate them first or
+# the GUI's keyword-component editor + help break at runtime (data(prms) "not
+# found"). The smoke test's fvsOL/data-artifacts guard fails the build otherwise.
+# (WORKDIR, not `cd`, so hadolint DL3003 stays happy; reset to /work below.)
+WORKDIR /src/fvs-interface/fvsOL
+RUN Rscript parms/mkpkeys.R \
+ && Rscript inst/extdata/mkhelp.R \
+ && R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
 # baked smoke test (run with no bind mount), as in the cluster target
