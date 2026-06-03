@@ -1,22 +1,21 @@
 #!/bin/sh
-# Launch the FVS WebGUI as the uid/gid that owns the bind-mounted /work, so a
-# forester can create + save projects in their host folder with the plain
-# `docker run ... -v <host>:/work` command -- no --user flag needed.
+# Launch the FVS WebGUI as the uid/gid that OWNS the bind-mounted /work, so a
+# forester can create + save projects with the plain `docker run -v <host>:/work`
+# command -- no --user flag needed. The image's baked-in non-root `fvs` user
+# can't write a host-owned bind mount, so fvsOL's dir.create()/setwd() for a new
+# project fails with "Permission denied".
 #
-# Why: Docker Desktop (macOS/Linux) presents the *host* owner on the bind mount,
-# and the image's baked-in non-root `fvs` user can't write a foreign-owned mount
-# -- so fvsOL's dir.create()/setwd() for a new project fails with "Permission
-# denied". Matching the process uid to the mount owner fixes it transparently.
-#
-# When /work is unmounted or root-owned (e.g. the CI smoke test, or a named
-# volume), fall back to the baked-in `fvs` user rather than running as root.
+# Docker Desktop presents the mount owner differently per host:
+#   - Linux:  the host user's real uid -> run as that uid (files owned by them).
+#   - macOS:  the mount shows up root-owned (uid 0), but root CAN write it and
+#             Docker Desktop maps container-root writes back to the host user.
+# In BOTH cases the *mount owner* can write, so we always drop to it. When that
+# owner is root (macOS, an unmounted /work, the CI smoke test, or a named
+# volume), we run as root -- which writes fine. (Do NOT fall back to `fvs` on
+# uid 0: that is exactly the macOS case, and `fvs` can't write the mount.)
 set -eu
 
 uid="$(stat -c %u /work 2>/dev/null || echo 0)"
 gid="$(stat -c %g /work 2>/dev/null || echo 0)"
-if [ "$uid" = "0" ]; then
-  uid="$(id -u fvs)"
-  gid="$(id -g fvs)"
-fi
 
 exec gosu "${uid}:${gid}" "$@"
