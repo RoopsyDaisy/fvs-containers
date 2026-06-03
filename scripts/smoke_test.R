@@ -120,6 +120,27 @@ if (have_fvsOL) check("webgui/work-writable", {
   isTRUE(ok)
 })
 
+# Guard 2d - WebGUI project persistence (webgui only): fvsOL creates a NEW project
+# as a SIBLING of the current one (setwd("..")+dir.create), so the launcher must
+# run INSIDE a sub-folder of the master (the /work bind mount) -- else new projects
+# escape to the master's PARENT (the container's ephemeral root) and vanish when
+# the --rm container stops. Lock the launcher's invariant: webgui_project_dir()
+# must return a CHILD of the master. Runs in a tempdir so CI needs no mount.
+# (webgui-launch.R is webgui-only; absent in the cluster image -> self-skips.)
+.persist_helper <- Filter(file.exists,
+  c("/opt/fvs/webgui-launch.R", "docker/webgui-launch.R"))
+if (have_fvsOL && length(.persist_helper)) {
+  source(.persist_helper[1])
+  check("webgui/project-persistence", {
+    master  <- file.path(tempdir(), paste0(".persist_", Sys.getpid()))
+    project <- webgui_project_dir(master)
+    ok <- identical(normalizePath(dirname(project)), normalizePath(master)) &&
+            dir.exists(project)
+    unlink(master, recursive = TRUE)
+    ok
+  })
+}
+
 # Guard 3 - FVS engine present + version stamp: the FVS binary must be runnable
 # and report its build version, so a rebuild proves the engine is wired up and
 # records which version the WebGUI/cluster images carry (provenance + a check
