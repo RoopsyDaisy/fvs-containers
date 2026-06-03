@@ -176,8 +176,17 @@ ENV PORT=3838
 COPY docker/webgui-app.R /opt/fvs/webgui-app.R
 # baked smoke test (run with no bind mount), as in the cluster target
 COPY scripts/smoke_test.R /opt/fvs/smoke_test.R
-RUN useradd -m fvs
-USER fvs
+# Run the WebGUI as whoever owns the bind-mounted /work, so a forester can create
+# + save projects with the plain `docker run -v <host>:/work` command -- no --user
+# flag. Docker Desktop (macOS/Linux) presents the host owner on the mount, which
+# the baked-in non-root `fvs` user can't write. The container starts as root and
+# the entrypoint gosu-drops to the mount owner (fallback: `fvs`). No `USER` here.
+RUN useradd -m fvs \
+    && apt-get update && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+COPY docker/webgui-entrypoint.sh /opt/fvs/webgui-entrypoint.sh
+RUN chmod +x /opt/fvs/webgui-entrypoint.sh
 WORKDIR /work
 EXPOSE 3838
+ENTRYPOINT ["/opt/fvs/webgui-entrypoint.sh"]
 CMD ["R", "-q", "-e", "source('/opt/fvs/webgui-app.R')"]
