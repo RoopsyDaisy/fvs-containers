@@ -103,6 +103,23 @@ if (have_fvsOL) check("fvsOL/data-artifacts", {
   all(loads) && is.list(ep$prms) && length(ep$prms) > 0L
 })
 
+# Guard 2c - /work writable by the runtime user (WebGUI only): fvsOL creates a new
+# project as a directory under the working dir (the bind-mounted /work). If the
+# container runs as a user that can't write /work, dir.create()/setwd() fail with
+# "Permission denied" the instant a forester makes a project -- the macOS bind-mount
+# bug. The webgui entrypoint (docker/webgui-entrypoint.sh) gosu-drops to the /work
+# owner to prevent that; this guard runs INSIDE that dropped process and writes
+# /work the way fvsOL does, so a bad entrypoint fails the build HERE. (In CI /work
+# is root-owned and unmounted, so the #25 "uid==0 -> non-root fvs" fallback would
+# fail this; running as the owner -- root -- passes.) Cluster image skips it (no
+# fvsOL; it runs as fvs against a separately-bound, writable cwd).
+if (have_fvsOL) check("webgui/work-writable", {
+  d  <- file.path("/work", paste0(".smoke_proj_", Sys.getpid()))
+  ok <- dir.create(d, showWarnings = FALSE)
+  if (ok) unlink(d, recursive = TRUE)
+  isTRUE(ok)
+})
+
 # Guard 3 - FVS engine present + version stamp: the FVS binary must be runnable
 # and report its build version, so a rebuild proves the engine is wired up and
 # records which version the WebGUI/cluster images carry (provenance + a check
