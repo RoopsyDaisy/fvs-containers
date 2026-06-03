@@ -12,5 +12,10 @@ BIN_DIR="${1:-$PWD/.devcontainer/fvs-bin}"
 
 export FVS_BIN="$BIN_DIR"
 export LD_LIBRARY_PATH="$BIN_DIR:${LD_LIBRARY_PATH:-}"
-echo "Serving FVS WebGUI on http://0.0.0.0:${PORT:-3838}  (FVS_BIN=$BIN_DIR)"
+# Master dir for fvsOL projects. In the image this is /work (the bind mount);
+# for the dev loop keep projects out of the repo root by defaulting to the
+# gitignored outputs/ tree.
+export FVS_WORK="${FVS_WORK:-$PWD/outputs/webgui-projects}"
+mkdir -p "$FVS_WORK"
+echo "Serving FVS WebGUI on http://0.0.0.0:${PORT:-3838}  (FVS_BIN=$BIN_DIR, projects in $FVS_WORK)"
 exec R -q -e "source('docker/webgui-app.R')"
