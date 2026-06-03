@@ -173,7 +173,8 @@ RUN Rscript parms/mkpkeys.R \
  && Rscript inst/extdata/mkhelp.R \
  && R -q -e "roxygen2::roxygenize('/src/fvs-interface/fvsOL'); remotes::install_local('/src/fvs-interface/fvsOL', upgrade='never', force=TRUE)"
 ENV PORT=3838
-COPY docker/webgui-app.R /opt/fvs/webgui-app.R
+COPY docker/webgui-app.R    /opt/fvs/webgui-app.R
+COPY docker/webgui-launch.R /opt/fvs/webgui-launch.R
 # baked smoke test (run with no bind mount), as in the cluster target
 COPY scripts/smoke_test.R /opt/fvs/smoke_test.R
 # Run the WebGUI as whoever owns the bind-mounted /work, so a forester can create
